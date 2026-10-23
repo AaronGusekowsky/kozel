@@ -7,7 +7,6 @@ canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 const groundLevel = canvas.height - 220; 
 
-// Элементы интерфейса
 const uiLayer = document.getElementById('ui-layer');
 const mainMenu = document.getElementById('main-menu');
 const gameOverScreen = document.getElementById('game-over-screen');
@@ -26,13 +25,12 @@ const shotMenu = document.getElementById('shot-menu');
 const powerContainer = document.getElementById('power-container');
 const powerCursor = document.getElementById('power-cursor');
 
-// Игровые переменные
 let lives = 3;
 let respect = 0;
 let jugglingCount = 0; 
-let kozelLetters = 0; // Штрафные буквы вратаря (макс 5)
+let kozelLetters = 0; 
 let gameStartTime = 0;
-let gameState = 'MENU'; // MENU, RECEPTION, JUGGLING, AIMING, POWER, SHOT_ANIMATION, GAMEOVER
+let gameState = 'MENU'; 
 
 let ball = { x: 0, y: 0, size: 10, vx: 0, vy: 0, sizeSpeed: 0, ax: 0, ay: 0 };
 let targetGoalX = 0, targetGoalY = 0;
@@ -41,80 +39,17 @@ let powerCursorPos = 0, powerDirection = 1, selectedPower = 50;
 let animStartX = 0, animStartY = 0, animEndX = 0, animEndY = 0, animProgress = 0;
 let shotOutcome = 'GOAL'; 
 
+// НОВЫЕ ПЕРЕМЕННЫЕ ВРАТАРЯ
+let gkX = 0;
+let gkWidth = 40;
+let gkHeight = 50;
+let gkAnimStartX = 0;
+let gkAnimEndX = 0;
+
 let cursor = { pos: 0, speed: 1.2, direction: 1 };
 const targetZone = { pos: 50, greenWidth: 8, yellowWidth: 16 };
 let timeLeft = 10.0;
 let lastFrameTime = performance.now();
-
-// --- СТАРТ И МЕНЮ ---
-function initMenu() {
-    gameState = 'MENU';
-    uiLayer.style.display = 'none';
-    gameOverScreen.style.display = 'none';
-    mainMenu.style.display = 'flex';
-}
-
-function startNewGame() {
-    mainMenu.style.display = 'none';
-    gameOverScreen.style.display = 'none';
-    uiLayer.style.display = 'flex';
-    
-    lives = 3;
-    respect = 0;
-    kozelLetters = 0;
-    gameStartTime = performance.now();
-    updateUI();
-    startReception();
-}
-
-function updateUI() {
-    if(uiRespectScore) uiRespectScore.innerText = respect;
-    
-    let hearts = '';
-    for(let i=0; i<lives; i++) hearts += '❤️';
-    for(let i=0; i<(3-lives); i++) hearts += '🖤';
-    if(uiLivesCount) uiLivesCount.innerText = hearts;
-
-    // Обновляем буквы КОЗЁЛ
-    for(let i=0; i<5; i++) {
-        let letterSpan = document.getElementById(`k-${i}`);
-        if(letterSpan) {
-            if(i < kozelLetters) letterSpan.classList.add('active');
-            else letterSpan.classList.remove('active');
-        }
-    }
-}
-
-// Управление рекордами
-function saveRecord(newRespect, timeTaken) {
-    let bestRespect = localStorage.getItem('kozel_respect') || 0;
-    let bestTime = localStorage.getItem('kozel_time') || 9999;
-    
-    if(newRespect > bestRespect) localStorage.setItem('kozel_respect', newRespect);
-    if(timeTaken < bestTime) localStorage.setItem('kozel_time', timeTaken);
-}
-
-// Кнопки Главного Меню
-document.getElementById('btn-menu-start').addEventListener('click', startNewGame);
-document.getElementById('btn-menu-exit').addEventListener('click', () => tg.close());
-
-document.getElementById('btn-menu-rules').addEventListener('click', () => {
-    document.getElementById('modal-rules').style.display = 'block';
-});
-document.getElementById('btn-menu-records').addEventListener('click', () => {
-    document.getElementById('rec-respect').innerText = localStorage.getItem('kozel_respect') || 0;
-    let bTime = localStorage.getItem('kozel_time');
-    document.getElementById('rec-time').innerText = bTime ? bTime : "--";
-    document.getElementById('modal-records').style.display = 'block';
-});
-document.querySelectorAll('.btn-close-modal').forEach(btn => {
-    btn.addEventListener('click', (e) => e.target.parentElement.style.display = 'none');
-});
-
-// Кнопки Экрана Конца Игры
-document.getElementById('btn-end-retry').addEventListener('click', startNewGame);
-document.getElementById('btn-end-home').addEventListener('click', initMenu);
-
 
 function getGoalBounds() {
     const goalWidth = Math.min(canvas.width * 0.7, 450);
@@ -124,7 +59,52 @@ function getGoalBounds() {
     return { x: goalX, y: goalY, width: goalWidth, height: goalHeight };
 }
 
-// --- ФАЗА 1: ПРИЕМ ---
+function initMenu() {
+    gameState = 'MENU';
+    uiLayer.style.display = 'none'; gameOverScreen.style.display = 'none'; mainMenu.style.display = 'flex';
+}
+
+function startNewGame() {
+    mainMenu.style.display = 'none'; gameOverScreen.style.display = 'none'; uiLayer.style.display = 'flex';
+    lives = 3; respect = 0; kozelLetters = 0; gameStartTime = performance.now();
+    updateUI(); startReception();
+}
+
+function updateUI() {
+    if(uiRespectScore) uiRespectScore.innerText = respect;
+    let hearts = '';
+    for(let i=0; i<lives; i++) hearts += '❤️';
+    for(let i=0; i<(3-lives); i++) hearts += '🖤';
+    if(uiLivesCount) uiLivesCount.innerText = hearts;
+    for(let i=0; i<5; i++) {
+        let letterSpan = document.getElementById(`k-${i}`);
+        if(letterSpan) {
+            if(i < kozelLetters) letterSpan.classList.add('active');
+            else letterSpan.classList.remove('active');
+        }
+    }
+}
+
+function saveRecord(newRespect, timeTaken) {
+    let bestRespect = localStorage.getItem('kozel_respect') || 0;
+    let bestTime = localStorage.getItem('kozel_time') || 9999;
+    if(newRespect > bestRespect) localStorage.setItem('kozel_respect', newRespect);
+    if(timeTaken < bestTime) localStorage.setItem('kozel_time', timeTaken);
+}
+
+document.getElementById('btn-menu-start').addEventListener('click', startNewGame);
+document.getElementById('btn-menu-exit').addEventListener('click', () => tg.close());
+document.getElementById('btn-menu-rules').addEventListener('click', () => document.getElementById('modal-rules').style.display = 'block');
+document.getElementById('btn-menu-records').addEventListener('click', () => {
+    document.getElementById('rec-respect').innerText = localStorage.getItem('kozel_respect') || 0;
+    let bTime = localStorage.getItem('kozel_time');
+    document.getElementById('rec-time').innerText = bTime ? bTime : "--";
+    document.getElementById('modal-records').style.display = 'block';
+});
+document.querySelectorAll('.btn-close-modal').forEach(btn => btn.addEventListener('click', (e) => e.target.parentElement.style.display = 'none'));
+document.getElementById('btn-end-retry').addEventListener('click', startNewGame);
+document.getElementById('btn-end-home').addEventListener('click', initMenu);
+
 function startReception() {
     if (lives <= 0) return processGameOver(false);
     if (kozelLetters >= 5) return processGameOver(true);
@@ -137,14 +117,10 @@ function startReception() {
     ball.vx = (Math.random() - 0.5) * 2;
     ball.sizeSpeed = (35 - 10) / (10 * 60); 
     ball.ay = 0; 
-
-    cursor.pos = Math.random() * 100;
-    cursor.speed = 1.2 + (3 - lives) * 0.3; 
+    cursor.pos = Math.random() * 100; cursor.speed = 1.2 + (3 - lives) * 0.3; 
     
-    uiTimingContainer.style.display = 'block';
-    uiJuggling.style.display = 'none';
-    shotMenu.style.display = 'none';
-    powerContainer.style.display = 'none';
+    uiTimingContainer.style.display = 'block'; uiJuggling.style.display = 'none';
+    shotMenu.style.display = 'none'; powerContainer.style.display = 'none';
     
     document.getElementById('timing-target-green').style.left = `${targetZone.pos}%`;
     document.getElementById('timing-target-green').style.width = `${targetZone.greenWidth}%`;
@@ -154,24 +130,19 @@ function startReception() {
     document.getElementById('timing-target-yellow-right').style.left = `${targetZone.pos + (targetZone.greenWidth/2)}%`;
     document.getElementById('timing-target-yellow-right').style.width = `${targetZone.yellowWidth}%`;
 
-    uiMessage.innerText = "ПРИЕМ!";
-    uiMessage.style.color = "#fff";
+    uiMessage.innerText = "ПРИЕМ!"; uiMessage.style.color = "#fff";
 }
 
-// --- ФАЗА 2: ЧЕКАНКА ---
 function startJuggling(isPerfect) {
     gameState = 'JUGGLING';
     jugglingCount = 0;
-    btnShoot.style.display = 'none'; 
-    uiTimingContainer.style.display = 'none';
-    uiJuggling.style.display = 'flex';
-    
+    btnShoot.style.display = 'none'; uiTimingContainer.style.display = 'none'; uiJuggling.style.display = 'flex';
     if (isPerfect) { respect += 50; updateUI(); }
     uiMessage.innerText = isPerfect ? "ИДЕАЛЬНЫЙ ПРИЕМ! +50\nНАЧЕКАНЬ МИНИМУМ 3 РАЗА!" : "НАЧЕКАНЬ МИНИМУМ 3 РАЗА!";
     uiMessage.style.color = isPerfect ? "#00ff00" : "#FFC107";
 
     ball.size = 35; ball.y = canvas.height * 0.5; ball.x = canvas.width / 2;
-    ball.vy = -7; ball.vx = (Math.random() - 0.5) * 6; ball.ay = 0.35; 
+    ball.vy = -7; ball.vx = (Math.random() - 0.5) * 6; ball.ay = 0.35; // Сброс гравитации
 }
 
 function hitBall(foot) {
@@ -184,11 +155,18 @@ function hitBall(foot) {
 
     if (isCenter || (foot === 'left' && isLeft) || (foot === 'right' && isRight)) {
         respect += 10; jugglingCount++; updateUI();
-        ball.vy = -11 - Math.random() * 3; ball.vx = (Math.random() - 0.5) * 10; 
+        
+        // ФИКС АБЬЮЗА: мяч отскакивает в противоположную сторону (всегда)
+        let xPush = 5 + Math.random() * 6; 
+        ball.vx = (foot === 'left') ? xPush : -xPush; 
+        
+        // ФИКС АБЬЮЗА: мяч становится тяжелее с каждым ударом
+        ball.ay += 0.015; 
+        
+        ball.vy = -10 - Math.random() * 3; 
         
         if (jugglingCount >= 3) {
-            btnShoot.style.display = 'flex'; 
-            uiMessage.innerText = "МОЖНО БИТЬ ИЛИ НАБИВАТЬ!";
+            btnShoot.style.display = 'flex'; uiMessage.innerText = "МОЖНО БИТЬ ИЛИ НАБИВАТЬ!";
         } else {
             uiMessage.innerText = `НАБИТО: ${jugglingCount}/3`;
         }
@@ -201,7 +179,6 @@ document.getElementById('btn-left').addEventListener('pointerdown', () => hitBal
 document.getElementById('btn-right').addEventListener('pointerdown', () => hitBall('right'));
 btnShoot.addEventListener('pointerdown', () => { if (gameState === 'JUGGLING') startAimingPhase(); });
 
-// --- ФАЗА 3.1: ПРИЦЕЛИВАНИЕ ---
 function startAimingPhase() {
     gameState = 'AIMING';
     uiJuggling.style.display = 'none';
@@ -218,7 +195,6 @@ document.querySelectorAll('.shot-btn').forEach(btn => {
     });
 });
 
-// --- ФАЗА 3.2: ШКАЛА СИЛЫ ---
 function startPowerPhase() {
     gameState = 'POWER';
     powerContainer.style.display = 'flex';
@@ -234,26 +210,54 @@ function confirmPower() {
     startShotAnimation();
 }
 
-// --- ФАЗА 3.3: АНИМАЦИЯ ---
 function startShotAnimation() {
     gameState = 'SHOT_ANIMATION';
-    uiMessage.innerText = "УДАР!";
-    uiMessage.style.color = "#ffff00";
+    uiMessage.innerText = "УДАР!"; uiMessage.style.color = "#ffff00";
     animStartX = ball.x; animStartY = ball.y; animProgress = 0;
+    
+    // Запоминаем, где был вратарь в момент удара
+    gkAnimStartX = gkX; 
+    let gkCenter = gkX + gkWidth / 2;
 
-    let accuracyRoll = Math.floor(Math.random() * 100) + 1;
+    let missChance = 5 + (selectedPower * 0.25); // Сила увеличивает шанс промаха
+    let roll = Math.random() * 100;
     const gb = getGoalBounds();
 
-    if (accuracyRoll <= 10) {
-        shotOutcome = 'MISS_BALL'; ball.vy = 0; ball.ay = 0.5;
-    } else if (accuracyRoll <= 30) {
-        shotOutcome = 'OFF_TARGET';
-        animEndX = targetGoalX + (targetGoalX > gb.x + gb.width / 2 ? 150 : -150); 
-        animEndY = gb.y - 100;
-    } else if (accuracyRoll <= 70) {
-        shotOutcome = 'SAVE'; animEndX = targetGoalX; animEndY = targetGoalY;
+    if (roll < missChance) {
+        // ПРОМАХ (мимо мяча или ворот)
+        if (roll < missChance * 0.2) {
+            shotOutcome = 'MISS_BALL'; ball.vy = 0; ball.ay = 0.5;
+        } else {
+            shotOutcome = 'OFF_TARGET';
+            animEndX = targetGoalX + (targetGoalX > gb.x + gb.width / 2 ? 150 : -150); 
+            animEndY = gb.y - 100;
+        }
+        // Вратарь дергается в сторону мяча, но не до конца
+        gkAnimEndX = Math.max(gb.x, Math.min(gb.x + gb.width - gkWidth, targetGoalX - gkWidth / 2));
     } else {
-        shotOutcome = 'GOAL'; animEndX = targetGoalX; animEndY = targetGoalY;
+        // МЯЧ ЛЕТИТ В СТВОР! Проверяем вероятность сейва от дистанции вратаря
+        let dist = Math.abs(targetGoalX - gkCenter); // Расстояние от вратаря до точки
+        let saveChance = 100 - (dist * 0.6); // Чем дальше вратарь, тем меньше шанс
+        saveChance -= (selectedPower * 0.4); // Сильный удар снижает шанс сейва
+        saveChance = Math.max(5, Math.min(95, saveChance)); // Ограничиваем 5-95%
+        
+        if (Math.random() * 100 < saveChance) {
+            // СЕЙВ
+            shotOutcome = 'SAVE'; 
+            animEndX = targetGoalX; animEndY = targetGoalY;
+            gkAnimEndX = targetGoalX - gkWidth / 2; // Вратарь допрыгивает
+        } else {
+            // ГОЛ
+            shotOutcome = 'GOAL'; 
+            animEndX = targetGoalX; animEndY = targetGoalY;
+            // Вратарь не дотягивается или прыгает не туда
+            if (dist < 100) {
+                gkAnimEndX = gkX + (targetGoalX > gkCenter ? 40 : -40); 
+            } else {
+                gkAnimEndX = gkX + (Math.random() > 0.5 ? 60 : -60);
+            }
+            gkAnimEndX = Math.max(gb.x, Math.min(gb.x + gb.width - gkWidth, gkAnimEndX));
+        }
     }
 }
 
@@ -262,7 +266,7 @@ function finishShot() {
     if (shotOutcome === 'GOAL') {
         resultMsg = "ГОЛ!";
         uiMessage.style.color = "#00ff00";
-        kozelLetters += selectedShotCost; // Начисляем буквы!
+        kozelLetters += selectedShotCost; 
         updateUI();
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     } else if (shotOutcome === 'SAVE') {
@@ -287,10 +291,8 @@ function finishShot() {
     setTimeout(startReception, 2000);
 }
 
-// --- КОНЕЦ ИГРЫ ---
 function loseLife(msg) {
-    lives--; updateUI();
-    gameState = 'RESULT';
+    lives--; updateUI(); gameState = 'RESULT';
     uiTimingContainer.style.display = 'none'; uiJuggling.style.display = 'none';
     shotMenu.style.display = 'none'; powerContainer.style.display = 'none';
     uiMessage.innerText = `${msg}\nМИНУС ЖИЗНЬ!`; uiMessage.style.color = "#ff3333";
@@ -299,40 +301,52 @@ function loseLife(msg) {
 }
 
 function processGameOver(isWin) {
-    gameState = 'GAMEOVER';
-    uiLayer.style.display = 'none'; // Прячем интерфейс
-    gameOverScreen.style.display = 'flex'; // Показываем меню конца
-    
+    gameState = 'GAMEOVER'; uiLayer.style.display = 'none'; gameOverScreen.style.display = 'flex'; 
     if (isWin) {
         let timeTaken = Math.floor((performance.now() - gameStartTime) / 1000);
-        endTitle.innerText = "ПОБЕДА!";
-        endTitle.style.color = "#00ff00";
+        endTitle.innerText = "ПОБЕДА!"; endTitle.style.color = "#00ff00";
         endDesc.innerHTML = `Ты наказал вратаря!<br>Он стал КОЗЛОМ за ${timeTaken} сек.<br>Твой респект: ${respect}`;
         saveRecord(respect, timeTaken);
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     } else {
-        endTitle.innerText = "ПОРАЖЕНИЕ";
-        endTitle.style.color = "#ff3333";
+        endTitle.innerText = "ПОРАЖЕНИЕ"; endTitle.style.color = "#ff3333";
         endDesc.innerHTML = `У тебя кончились попытки.<br>Твой респект: ${respect}`;
         saveRecord(respect, 9999);
     }
 }
 
-// --- ИГРОВОЙ ЦИКЛ ---
 function gameLoop(currentTime) {
     const dt = (currentTime - lastFrameTime) / 1000;
     lastFrameTime = currentTime;
 
-    // Рисуем фон (Двор и Ворота)
     ctx.fillStyle = '#4CAF50'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#607D8B'; ctx.fillRect(0, 0, canvas.width, canvas.height * 0.35);
     const gb = getGoalBounds();
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.strokeRect(gb.x, gb.y, gb.width, gb.height);
 
-    // Если мы в меню, дальше логику не крутим, просто рисуем фон двора
+    // --- ЛОГИКА И ОТРИСОВКА ВРАТАРЯ ---
+    if (gkX === 0) gkX = gb.x + gb.width / 2 - gkWidth / 2; // Старт по центру
+
+    if (gameState !== 'SHOT_ANIMATION' && gameState !== 'SHOT_RESULT' && gameState !== 'GAMEOVER') {
+        // Вратарь плавно ходит влево-вправо по синусоиде
+        let time = performance.now() / 1000;
+        let center = gb.x + gb.width / 2;
+        let range = (gb.width / 2) - (gkWidth / 2);
+        gkX = center + Math.sin(time * 2) * range; 
+    } else if (gameState === 'SHOT_ANIMATION') {
+        // Прыжок вратаря за мячом (в зависимости от исхода)
+        gkX = gkAnimStartX + (gkAnimEndX - gkAnimStartX) * Math.min(animProgress * 1.5, 1);
+    }
+
+    // Рисуем вратаря (оранжевая футболка, белые руки)
+    ctx.fillStyle = '#ff5722'; ctx.fillRect(gkX, gb.y + gb.height - gkHeight, gkWidth, gkHeight);
+    ctx.fillStyle = '#fff'; 
+    ctx.fillRect(gkX - 5, gb.y + gb.height - gkHeight + 10, 12, 12); // Левая рука
+    ctx.fillRect(gkX + gkWidth - 7, gb.y + gb.height - gkHeight + 10, 12, 12); // Правая рука
+    // ---------------------------------
+
     if (gameState === 'MENU' || gameState === 'GAMEOVER') {
-        requestAnimationFrame(gameLoop);
-        return;
+        requestAnimationFrame(gameLoop); return;
     }
 
     if (gameState === 'RECEPTION') {
@@ -388,7 +402,6 @@ function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 }
 
-// Тапы по экрану
 window.addEventListener('pointerdown', (e) => {
     if (gameState === 'MENU' || gameState === 'GAMEOVER') return;
     if (e.target.tagName === 'BUTTON' || e.target.closest('#shot-menu') || e.target.closest('#power-container')) return; 
@@ -420,6 +433,5 @@ window.addEventListener('pointerdown', (e) => {
     if (gameState === 'POWER') { confirmPower(); return; }
 });
 
-// Запуск (теперь игра стартует с меню)
 initMenu();
 requestAnimationFrame(gameLoop);

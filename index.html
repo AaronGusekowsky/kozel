@@ -7,14 +7,12 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     
-    <!-- Версия 4 для сброса кэша -->
-    <link rel="stylesheet" href="style.css?v=4">
+    <!-- Версия 5 -->
+    <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
-    <!-- Игровой интерфейс (скрыт в главном меню) -->
     <div id="ui-layer" style="display: none;">
         <div id="top-bar">
-            <!-- Счетчик КОЗЁЛ (Слева) -->
             <div id="kozel-board">
                 <span class="k-letter" id="k-0">К</span>
                 <span class="k-letter" id="k-1">О</span>
@@ -22,8 +20,6 @@
                 <span class="k-letter" id="k-3">Ё</span>
                 <span class="k-letter" id="k-4">Л</span>
             </div>
-            
-            <!-- Статистика (Справа) -->
             <div id="stats-board">
                 <div id="lives-board">ЖИЗНИ: <span id="lives-count">❤️❤️❤️</span></div>
                 <div id="respect-board">РЕСПЕКТ: <span id="respect-score">0</span></div>
@@ -77,7 +73,7 @@
         <button id="btn-menu-exit" class="menu-btn exit-btn">ВЫЙТИ</button>
     </div>
 
-    <!-- ЭКРАН КОНЦА ИГРЫ (Победа/Поражение) -->
+    <!-- ЭКРАН КОНЦА ИГРЫ -->
     <div id="game-over-screen" class="fullscreen-overlay" style="display: none;">
         <h2 id="end-title" class="game-title">ИГРА ОКОНЧЕНА</h2>
         <p id="end-desc" class="game-subtitle">...</p>
@@ -88,7 +84,8 @@
     <!-- ОКНА ПРАВИЛ И РЕКОРДОВ -->
     <div id="modal-rules" class="modal" style="display: none;">
         <h3>ПРАВИЛА</h3>
-        <p>1. Поймай мяч в зеленой/желтой зоне шкалы.<br><br>2. Начекань мяч левой (Л) и правой (П) ногой, чтобы не упал на красную черту.<br><br>3. После 3 раз нажми УДАР, выбери точку на воротах, тип удара и силу.<br><br>4. Забивай голы! Вратарь получает буквы К-О-З-Ё-Л. Собрал слово — ты победил!</p>
+        <!-- ИСПРАВЛЕН ТЕКСТ ПРАВИЛ -->
+        <p>1. Поймай мяч в зеленой/желтой зоне шкалы.<br><br>2. Начекань мяч левой (Л) и правой (П) ногой, чтобы не упал на красную черту.<br><br>3. Сделав минимум 3 набивки, нажми УДАР, выбери точку на воротах, тип удара и силу.<br><br>4. Забивай голы! Вратарь получает буквы К-О-З-Ё-Л. Собрал слово — ты победил!</p>
         <button class="menu-btn btn-close-modal">ПОНЯТНО</button>
     </div>
     
@@ -101,6 +98,7 @@
 
     <canvas id="gameCanvas"></canvas>
     
-    <script src="game.js?v=4"></script>
+    <!-- Версия 5 -->
+    <script src="game.js?v=5"></script>
 </body>
 </html>
