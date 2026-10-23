@@ -6,9 +6,8 @@ const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-const groundLevel = canvas.height - 220; // Подняли красную черту падения выше
+const groundLevel = canvas.height - 220; 
 
-// UI Элементы
 const uiTimingContainer = document.getElementById('timing-container');
 const uiCursor = document.getElementById('timing-cursor');
 const uiTargetGreen = document.getElementById('timing-target-green');
@@ -20,7 +19,6 @@ const uiLivesCount = document.getElementById('lives-count');
 const uiRespectScore = document.getElementById('respect-score');
 const uiJuggling = document.getElementById('juggling-ui');
 const btnShoot = document.getElementById('btn-shoot');
-const btnConfirmAim = document.getElementById('btn-confirm-aim');
 const shotMenu = document.getElementById('shot-menu');
 const powerContainer = document.getElementById('power-container');
 const powerCursor = document.getElementById('power-cursor');
@@ -31,8 +29,8 @@ let jugglingCount = 0;
 let gameState = 'RECEPTION'; 
 
 let ball = { x: 0, y: 0, size: 10, vx: 0, vy: 0, sizeSpeed: 0, ax: 0, ay: 0 };
-let targetGoalX = canvas.width / 2; 
-let targetGoalY = canvas.height * 0.25;
+let targetGoalX = 0; 
+let targetGoalY = 0;
 let selectedShotType = null;
 let powerCursorPos = 0; 
 let powerDirection = 1;
@@ -56,6 +54,15 @@ const targetZone = { pos: 50, greenWidth: 8, yellowWidth: 16 };
 let timeLeft = 10.0;
 let lastFrameTime = performance.now();
 
+// Функция отрисовки ворот (чтобы координаты везде совпадали)
+function getGoalBounds() {
+    const goalWidth = Math.min(canvas.width * 0.7, 450);
+    const goalHeight = 120;
+    const goalX = (canvas.width - goalWidth) / 2;
+    const goalY = canvas.height * 0.1;
+    return { x: goalX, y: goalY, width: goalWidth, height: goalHeight };
+}
+
 // --- ФАЗА 1: ПРИЕМ ---
 function startReception() {
     if (lives <= 0) return gameOver();
@@ -69,17 +76,16 @@ function startReception() {
     ball.size = 10;
     
     const targetY = canvas.height * 0.7;
-    const distanceY = targetY - ball.y;
-    ball.vy = distanceY / (10 * 60); 
+    ball.vy = (targetY - ball.y) / (10 * 60); 
     ball.vx = 0;
     ball.sizeSpeed = (35 - 10) / (10 * 60); 
+    ball.ay = 0; // Отключаем гравитацию для первой фазы
 
     cursor.pos = Math.random() * 100;
     cursor.speed = 1.2 + (3 - lives) * 0.3; 
     
     if (uiTimingContainer) uiTimingContainer.style.display = 'block';
     if (uiJuggling) uiJuggling.style.display = 'none';
-    if (btnConfirmAim) btnConfirmAim.style.display = 'none';
     if (shotMenu) shotMenu.style.display = 'none';
     if (powerContainer) powerContainer.style.display = 'none';
     
@@ -135,22 +141,16 @@ function startJuggling(isPerfect) {
 
 function hitBall(foot) {
     if (gameState !== 'JUGGLING') return;
-    
-    // Мяч должен быть выше красной черты
     if (ball.y >= groundLevel) return; 
 
     const centerX = canvas.width / 2;
-    const centerTolerance = 30; // Зона по центру, где подходит любая нога
+    const centerTolerance = 30;
     const isCenter = Math.abs(ball.x - centerX) <= centerTolerance;
     const isLeft = ball.x < centerX - centerTolerance;
     const isRight = ball.x > centerX + centerTolerance;
 
     let success = false;
-    if (isCenter) {
-        success = true; // По центру - любая кнопка
-    } else if (foot === 'left' && isLeft) {
-        success = true;
-    } else if (foot === 'right' && isRight) {
+    if (isCenter || (foot === 'left' && isLeft) || (foot === 'right' && isRight)) {
         success = true;
     }
 
@@ -175,10 +175,8 @@ function hitBall(foot) {
     }
 }
 
-const btnLeftEl = document.getElementById('btn-left');
-const btnRightEl = document.getElementById('btn-right');
-if (btnLeftEl) btnLeftEl.addEventListener('pointerdown', () => hitBall('left'));
-if (btnRightEl) btnRightEl.addEventListener('pointerdown', () => hitBall('right'));
+if (document.getElementById('btn-left')) document.getElementById('btn-left').addEventListener('pointerdown', () => hitBall('left'));
+if (document.getElementById('btn-right')) document.getElementById('btn-right').addEventListener('pointerdown', () => hitBall('right'));
 
 if (btnShoot) {
     btnShoot.addEventListener('pointerdown', () => {
@@ -191,34 +189,15 @@ if (btnShoot) {
 function startAimingPhase() {
     gameState = 'AIMING';
     if (uiJuggling) uiJuggling.style.display = 'none';
-    if (btnConfirmAim) btnConfirmAim.style.display = 'flex';
-    
-    const goalWidth = Math.min(canvas.width * 0.7, 450);
-    const goalHeight = 120;
-    const goalX = (canvas.width - goalWidth) / 2;
-    const goalY = canvas.height * 0.1;
-    targetGoalX = goalX + goalWidth / 2;
-    targetGoalY = goalY + goalHeight / 2;
-
     ball.vy = 0; ball.ay = 0; ball.vx = 0;
 
     if (uiMessage) {
-        uiMessage.innerText = "Куда ударишь?";
+        uiMessage.innerText = "ТАПНИ ПО ВОРОТАМ, ЧТОБЫ ВЫБРАТЬ ТОЧКУ УДАРА!";
         uiMessage.style.color = "#ffcc00";
     }
 }
 
-if (btnConfirmAim) {
-    btnConfirmAim.addEventListener('pointerdown', () => {
-        if (gameState !== 'AIMING') return;
-        btnConfirmAim.style.display = 'none';
-        if (shotMenu) shotMenu.style.display = 'block';
-        if (uiMessage) {
-            uiMessage.innerText = "ВЫБЕРИ ТИП УДАРА";
-            uiMessage.style.color = "#ffcc00";
-        }
-    });
-}
+// Обработка тапа по воротам находится в общем EventListener ниже
 
 document.querySelectorAll('.shot-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -260,25 +239,27 @@ function startShotAnimation() {
     animProgress = 0;
 
     let accuracyRoll = Math.floor(Math.random() * 100) + 1;
-
-    const goalWidth = Math.min(canvas.width * 0.7, 450);
-    const goalHeight = 120;
-    const goalX = (canvas.width - goalWidth) / 2;
-    const goalY = canvas.height * 0.1;
+    const gb = getGoalBounds();
 
     if (accuracyRoll <= 10) {
+        // Промах по мячу
         shotOutcome = 'MISS_BALL';
-        animEndX = ball.x + (Math.random() - 0.5) * 50;
-        animEndY = groundLevel - 10;
+        ball.vy = 0;
+        ball.ay = 0.5; // Включаем гравитацию для падения
     } else if (accuracyRoll <= 30) {
+        // Мимо ворот (мяч летит мимо цели)
         shotOutcome = 'OFF_TARGET';
-        animEndX = targetGoalX + (Math.random() > 0.5 ? 250 : -250);
-        animEndY = goalY - 80 - Math.random() * 50; 
+        // Если целились правее центра, мажем вправо. Иначе влево. И летит выше.
+        let missXOffset = (targetGoalX > gb.x + gb.width / 2) ? 150 : -150;
+        animEndX = targetGoalX + missXOffset; 
+        animEndY = gb.y - 100; // Выше перекладины
     } else if (accuracyRoll <= 70) {
+        // Сейв (Летит в цель, но пишет, что вратарь отбил)
         shotOutcome = 'SAVE';
-        animEndX = goalX + goalWidth / 2;
-        animEndY = goalY + goalHeight / 2;
+        animEndX = targetGoalX;
+        animEndY = targetGoalY;
     } else {
+        // Гол! Летит ровно туда, куда тапнули
         shotOutcome = 'GOAL';
         animEndX = targetGoalX;
         animEndY = targetGoalY;
@@ -290,7 +271,7 @@ function finishShot() {
     
     let resultMsg = "";
     if (shotOutcome === 'GOAL') {
-        resultMsg = "ГОЛ В ДЕВЯТКУ! ИДЕАЛЬНО!";
+        resultMsg = "ИДЕАЛЬНЫЙ УДАР! ГОЛ!"; // Убрал слово "девятка"
         if (uiMessage) uiMessage.style.color = "#00ff00";
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     } else if (shotOutcome === 'SAVE') {
@@ -300,7 +281,7 @@ function finishShot() {
         loseLife("ВРАТАРЬ ВЗЯЛ УДАР!");
         return;
     } else if (shotOutcome === 'OFF_TARGET') {
-        resultMsg = "МИМО ВОРОТ! УКАТИЛСЯ В КУСТЫ!";
+        resultMsg = "МИМО ВОРОТ! МЯЧ В МОЛОКО!";
         if (uiMessage) uiMessage.style.color = "#ff3333";
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
         loseLife("НЕ ПОПАЛ В СТВОР ВОРОТ!");
@@ -327,7 +308,6 @@ function loseLife(msg) {
     gameState = 'RESULT';
     if (uiTimingContainer) uiTimingContainer.style.display = 'none';
     if (uiJuggling) uiJuggling.style.display = 'none';
-    if (btnConfirmAim) btnConfirmAim.style.display = 'none';
     if (shotMenu) shotMenu.style.display = 'none';
     if (powerContainer) powerContainer.style.display = 'none';
     if (uiMessage) {
@@ -342,13 +322,25 @@ function loseLife(msg) {
 function gameOver() {
     gameState = 'GAMEOVER';
     if (uiJuggling) uiJuggling.style.display = 'none';
-    if (btnConfirmAim) btnConfirmAim.style.display = 'none';
     if (shotMenu) shotMenu.style.display = 'none';
     if (powerContainer) powerContainer.style.display = 'none';
     if (uiMessage) {
         uiMessage.innerText = `ИГРА ОКОНЧЕНА!\nТвой респект: ${respect}\nКликни для рестарта.`;
         uiMessage.style.color = "#ff3333";
     }
+}
+
+// Отрисовка прицела
+function drawTargetCrosshair() {
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+    ctx.beginPath();
+    ctx.arc(targetGoalX, targetGoalY, 14, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(targetGoalX - 8, targetGoalY); ctx.lineTo(targetGoalX + 8, targetGoalY);
+    ctx.moveTo(targetGoalX, targetGoalY - 8); ctx.lineTo(targetGoalX, targetGoalY + 8);
+    ctx.stroke();
 }
 
 // --- ИГРОВОЙ ЦИКЛ ---
@@ -359,13 +351,9 @@ function gameLoop(currentTime) {
     ctx.fillStyle = '#4CAF50'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#607D8B'; ctx.fillRect(0, 0, canvas.width, canvas.height * 0.35);
     
-    const goalWidth = Math.min(canvas.width * 0.7, 450);
-    const goalHeight = 120;
-    const goalX = (canvas.width - goalWidth) / 2;
-    const goalY = canvas.height * 0.1;
-    
+    const gb = getGoalBounds();
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 4;
-    ctx.strokeRect(goalX, goalY, goalWidth, goalHeight);
+    ctx.strokeRect(gb.x, gb.y, gb.width, gb.height);
 
     if (gameState === 'RECEPTION') {
         ball.y += ball.vy; 
@@ -381,7 +369,6 @@ function gameLoop(currentTime) {
             uiTimer.innerText = Math.max(0, timeLeft).toFixed(1) + "s";
             uiTimer.style.color = timeLeft <= 3 ? "#ff3333" : "#ffcc00";
         }
-
         if (timeLeft <= 0) loseLife("ВРЕМЯ ВЫШЛО!");
     }
 
@@ -392,7 +379,6 @@ function gameLoop(currentTime) {
         if (ball.x < ball.size) { ball.x = ball.size; ball.vx *= -0.8; }
         if (ball.x > canvas.width - ball.size) { ball.x = canvas.width - ball.size; ball.vx *= -0.8; }
 
-        // Рисуем поднятую выше красную линию смерти
         ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
         ctx.fillRect(0, groundLevel, canvas.width, 4);
 
@@ -401,17 +387,9 @@ function gameLoop(currentTime) {
         }
     }
 
-    if (gameState === 'AIMING') {
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
-        ctx.beginPath();
-        ctx.arc(targetGoalX, targetGoalY, 14, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.moveTo(targetGoalX - 8, targetGoalY); ctx.lineTo(targetGoalX + 8, targetGoalY);
-        ctx.moveTo(targetGoalX, targetGoalY - 8); ctx.lineTo(targetGoalX, targetGoalY + 8);
-        ctx.stroke();
+    // Рисуем прицел в нужных фазах
+    if (gameState === 'SELECT_SHOT' || gameState === 'POWER') {
+        drawTargetCrosshair();
     }
 
     if (gameState === 'POWER') {
@@ -425,11 +403,9 @@ function gameLoop(currentTime) {
         let speedMultiplier = 0.01 + (selectedPower / 100) * 0.07;
         
         if (shotOutcome === 'MISS_BALL') {
-            ball.y += 6;
-            animProgress = 1;
-            if (ball.y >= groundLevel) {
-                finishShot();
-            }
+            ball.vy += ball.ay; // Гравитация для промаха
+            ball.y += ball.vy;
+            if (ball.y >= groundLevel) finishShot();
         } else {
             animProgress += speedMultiplier;
             if (animProgress >= 1) {
@@ -438,10 +414,7 @@ function gameLoop(currentTime) {
             }
             ball.x = animStartX + (animEndX - animStartX) * animProgress;
             ball.y = animStartY + (animEndY - animStartY) * animProgress;
-            
-            if (shotOutcome !== 'MISS_BALL') {
-                ball.size = 35 - (35 - 10) * animProgress;
-            }
+            ball.size = 35 - (35 - 10) * animProgress;
         }
     }
 
@@ -453,8 +426,8 @@ function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 }
 
+// Глобальный перехват тапов
 window.addEventListener('pointerdown', (e) => {
-    // Не перехватываем клики по кнопкам и элементам интерфейса
     if (e.target.tagName === 'BUTTON' || e.target.closest('#shot-menu') || e.target.closest('#power-container')) return; 
 
     if (gameState === 'GAMEOVER') {
@@ -482,21 +455,30 @@ window.addEventListener('pointerdown', (e) => {
     }
 
     if (gameState === 'AIMING') {
-        targetGoalX = e.clientX;
-        targetGoalY = e.clientY;
+        const gb = getGoalBounds();
+        // Проверяем, что тап был внутри квадрата ворот
+        if (e.clientX >= gb.x && e.clientX <= gb.x + gb.width &&
+            e.clientY >= gb.y && e.clientY <= gb.y + gb.height) {
+            
+            targetGoalX = e.clientX;
+            targetGoalY = e.clientY;
+            
+            // Точка выбрана, переходим к меню удара
+            gameState = 'SELECT_SHOT';
+            if (shotMenu) shotMenu.style.display = 'block';
+            if (uiMessage) {
+                uiMessage.innerText = "ВЫБЕРИ ТИП УДАРА";
+                uiMessage.style.color = "#ffcc00";
+            }
+            if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+        }
+        // Если тап мимо ворот — ничего не происходит (игнорируем)
         return;
     }
 
     if (gameState === 'POWER') {
         confirmPower();
         return;
-    }
-});
-
-window.addEventListener('pointermove', (e) => {
-    if (gameState === 'AIMING') {
-        targetGoalX = e.clientX;
-        targetGoalY = e.clientY;
     }
 });
 

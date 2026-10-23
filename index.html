@@ -7,8 +7,8 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     
-    <!-- Добавили ?v=2, чтобы Телеграм не брал старый кэш -->
-    <link rel="stylesheet" href="style.css?v=2">
+    <!-- Версия 3, чтобы Телеграм сбросил кэш -->
+    <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
     <div id="ui-layer">
@@ -37,10 +37,7 @@
             <button id="btn-right" class="foot-btn">П</button>
         </div>
 
-        <!-- Фаза 3.1: Кнопка подтверждения прицела -->
-        <button id="btn-confirm-aim" class="action-btn" style="display: none;">ЦЕЛЬ ВЫБРАНА 👉</button>
-
-        <!-- Фаза 3.2: Меню выбора удара -->
+        <!-- Фаза 3: Меню выбора удара (Кнопку прицеливания убрали) -->
         <div id="shot-menu" style="display: none;">
             <div class="menu-title">ВЫБЕРИ ТИП УДАРА:</div>
             <div class="shot-options">
@@ -52,7 +49,7 @@
             </div>
         </div>
 
-        <!-- Фаза 3.3: Вертикальная шкала силы -->
+        <!-- Фаза 3: Вертикальная шкала силы -->
         <div id="power-container" style="display: none;">
             <div class="menu-title">СИЛА</div>
             <div id="power-bar">
@@ -63,7 +60,7 @@
 
     <canvas id="gameCanvas"></canvas>
     
-    <!-- И здесь тоже добавили ?v=2 -->
-    <script src="game.js?v=2"></script>
+    <!-- Версия 3 для скрипта -->
+    <script src="game.js?v=3"></script>
 </body>
 </html>
