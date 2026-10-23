@@ -20,21 +20,28 @@ const uiLivesCount = document.getElementById('lives-count');
 const uiRespectScore = document.getElementById('respect-score');
 const uiJuggling = document.getElementById('juggling-ui');
 const btnShoot = document.getElementById('btn-shoot');
+const btnConfirmAim = document.getElementById('btn-confirm-aim');
 const shotMenu = document.getElementById('shot-menu');
 const powerContainer = document.getElementById('power-container');
 const powerCursor = document.getElementById('power-cursor');
 
 let lives = 3;
 let respect = 0;
-let jugglingCount = 0; // Считаем набивки для появления кнопки удара
+let jugglingCount = 0; 
 let gameState = 'RECEPTION'; 
 
 let ball = { x: 0, y: 0, size: 10, vx: 0, vy: 0, sizeSpeed: 0, ax: 0, ay: 0 };
-let targetGoalX = canvas.width / 2; // Куда целит игрок при ударе
+let targetGoalX = canvas.width / 2; 
 let targetGoalY = canvas.height * 0.25;
 let selectedShotType = null;
-let powerCursorPos = 0; // 0 до 100 для вертикальной шкалы
+let powerCursorPos = 0; 
 let powerDirection = 1;
+let selectedPower = 50; // Сила удара (0-100)
+
+// Переменные для анимации полета мяча
+let animStartX = 0, animStartY = 0, animEndX = 0, animEndY = 0;
+let animProgress = 0;
+let shotOutcome = 'GOAL'; // GOAL, SAVE, OFF_TARGET, MISS_BALL
 
 const trajectories = [
     { name: "Прямой навес", startX: 0.5 },
@@ -44,7 +51,7 @@ const trajectories = [
     { name: "Пушка низом", startX: 0.5 }
 ];
 
-let cursor = { pos: 0, speed: 1.5, direction: 1 }; // Сделали ползунок медленнее для точности
+let cursor = { pos: 0, speed: 1.2, direction: 1 };
 const targetZone = { pos: 50, greenWidth: 8, yellowWidth: 16 };
 
 let timeLeft = 10.0;
@@ -59,21 +66,21 @@ function startReception() {
     
     const t = trajectories[Math.floor(Math.random() * trajectories.length)];
     ball.x = canvas.width * t.startX; 
-    ball.y = canvas.height * 0.15; // Стартует сверху под воротами
+    ball.y = canvas.height * 0.15; 
     ball.size = 10;
     
-    // Синхронизируем скорость падения так, чтобы мяч долетал ровно за 10 секунд до зоны приема
     const targetY = canvas.height * 0.7;
     const distanceY = targetY - ball.y;
-    ball.vy = distanceY / (10 * 60); // 60 кадров в секунду * 10 секунд
+    ball.vy = distanceY / (10 * 60); 
     ball.vx = 0;
-    ball.sizeSpeed = (40 - 10) / (10 * 60); // Плавное увеличение спрайта мяча
+    ball.sizeSpeed = (35 - 10) / (10 * 60); 
 
     cursor.pos = Math.random() * 100;
-    cursor.speed = 1.2 + (3 - lives) * 0.3; // Медленный, комфортный для попадания ползунок
+    cursor.speed = 1.2 + (3 - lives) * 0.3; 
     
     uiTimingContainer.style.display = 'block';
     uiJuggling.style.display = 'none';
+    btnConfirmAim.style.display = 'none';
     shotMenu.style.display = 'none';
     powerContainer.style.display = 'none';
     
@@ -93,7 +100,7 @@ function startReception() {
 function startJuggling(isPerfect) {
     gameState = 'JUGGLING';
     jugglingCount = 0;
-    btnShoot.style.display = 'none'; // Появится после 3 ударов
+    btnShoot.style.display = 'none'; 
     uiTimingContainer.style.display = 'none';
     uiJuggling.style.display = 'flex';
     
@@ -131,7 +138,7 @@ function hitBall(foot) {
         ball.vx = (Math.random() - 0.5) * 10; 
         
         if (jugglingCount >= 3) {
-            btnShoot.style.display = 'flex'; // Активируем кнопку удара!
+            btnShoot.style.display = 'flex'; 
             uiMessage.innerText = "МОЖНО БИТЬ ПО ВОРОТАМ ИЛИ НАБИВАТЬ ДАЛЬШЕ!";
         } else {
             uiMessage.innerText = `НАБИТО: ${jugglingCount}/3`;
@@ -146,27 +153,38 @@ function hitBall(foot) {
 document.getElementById('btn-left').addEventListener('pointerdown', () => hitBall('left'));
 document.getElementById('btn-right').addEventListener('pointerdown', () => hitBall('right'));
 
-// Кнопка перехода к Фазе 3 (Удар)
 btnShoot.addEventListener('pointerdown', () => {
     if (gameState !== 'JUGGLING') return;
     startAimingPhase();
 });
 
-// --- ФАЗА 3: ПРИЦЕЛИВАНИЕ И УДАР ---
+// --- ФАЗА 3.1: ПРИЦЕЛИВАНИЕ ---
 function startAimingPhase() {
     gameState = 'AIMING';
     uiJuggling.style.display = 'none';
+    btnConfirmAim.style.display = 'flex';
+    
+    const goalWidth = Math.min(canvas.width * 0.7, 450);
+    const goalHeight = 120;
+    const goalX = (canvas.width - goalWidth) / 2;
+    const goalY = canvas.height * 0.1;
+    targetGoalX = goalX + goalWidth / 2;
+    targetGoalY = goalY + goalHeight / 2;
+
+    ball.vy = 0; ball.ay = 0; ball.vx = 0;
+
+    uiMessage.innerText = "Куда ударишь?";
+    uiMessage.style.color = "#ffcc00";
+}
+
+btnConfirmAim.addEventListener('pointerdown', () => {
+    if (gameState !== 'AIMING') return;
+    btnConfirmAim.style.display = 'none';
     shotMenu.style.display = 'block';
     uiMessage.innerText = "ВЫБЕРИ ТИП УДАРА";
     uiMessage.style.color = "#ffcc00";
+});
 
-    // Замедляем время (bullet-time)
-    ball.vy = 0; ball.ay = 0; ball.vx = 0;
-    targetGoalX = canvas.width / 2;
-    targetGoalY = canvas.height * 0.25;
-}
-
-// Выбор типа удара
 document.querySelectorAll('.shot-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         selectedShotType = e.target.getAttribute('data-type');
@@ -175,49 +193,92 @@ document.querySelectorAll('.shot-btn').forEach(btn => {
     });
 });
 
-// Шкала силы
+// --- ФАЗА 3.2: ШКАЛА СИЛЫ ---
 function startPowerPhase() {
     gameState = 'POWER';
     powerContainer.style.display = 'flex';
     powerCursorPos = 0;
     powerDirection = 1;
-    uiMessage.innerText = "ЖМИ ЭКРАН ДЛЯ ФИКСАЦИИ СИЛЫ!";
+    uiMessage.innerText = "ЖМИ ЭКРАН, ЧТОБЫ ОСТАНОВИТЬ СИЛУ!";
 }
 
 function confirmPower() {
     if (gameState !== 'POWER') return;
+    selectedPower = powerCursorPos; // Сохраняем выбранную силу (0-100)
     powerContainer.style.display = 'none';
-    executeShot(powerCursorPos);
+    startShotAnimation();
 }
 
-// Расчет результата удара
-function executeShot(powerValue) {
+// --- ФАЗА 3.3: АНИМАЦИЯ УДАРА ---
+function startShotAnimation() {
+    gameState = 'SHOT_ANIMATION';
+    uiMessage.innerText = "УДАР!";
+    uiMessage.style.color = "#ffff00";
+
+    animStartX = ball.x;
+    animStartY = ball.y;
+    animProgress = 0;
+
+    // Рассчитываем исход удара (точность 1-100)
+    let accuracyRoll = Math.floor(Math.random() * 100) + 1;
+
+    const goalWidth = Math.min(canvas.width * 0.7, 450);
+    const goalHeight = 120;
+    const goalX = (canvas.width - goalWidth) / 2;
+    const goalY = canvas.height * 0.1;
+
+    if (accuracyRoll <= 10) {
+        // 1. Промах мимо мяча (мяч падает под ноги)
+        shotOutcome = 'MISS_BALL';
+        animEndX = ball.x + (Math.random() - 0.5) * 50;
+        animEndY = groundLevel - 10;
+    } else if (accuracyRoll <= 30) {
+        // 2. Промах мимо ворот (мяч улетает в сторону)
+        shotOutcome = 'OFF_TARGET';
+        animEndX = targetGoalX + (Math.random() > 0.5 ? 250 : -250);
+        animEndY = goalY - 80 - Math.random() * 50; // Выше ворот или вбок
+    } else if (accuracyRoll <= 70) {
+        // 3. Вратарь потащил (в центр ворот)
+        shotOutcome = 'SAVE';
+        animEndX = goalX + goalWidth / 2;
+        animEndY = goalY + goalHeight / 2;
+    } else {
+        // 4. Гол! (точно в выбранную зону)
+        shotOutcome = 'GOAL';
+        animEndX = targetGoalX;
+        animEndY = targetGoalY;
+    }
+}
+
+function finishShot() {
     gameState = 'SHOT_RESULT';
     
-    // Рендом точности от 1 до 100
-    // Сила влияет на риск: чем выше сила (ближе к 100), тем выше шанс отклонения точности
-    let accuracyRoll = Math.floor(Math.random() * 100) + 1;
-    
     let resultMsg = "";
-    if (accuracyRoll === 100) {
-        resultMsg = "ГОЛ В ДЕВЯТКУ! ВРАТАРЬ БЕЗУСПЕШЕН!";
+    if (shotOutcome === 'GOAL') {
+        resultMsg = "ГОЛ В ДЕВЯТКУ! ИДЕАЛЬНО!";
         uiMessage.style.color = "#00ff00";
-    } else if (accuracyRoll >= 70) {
-        resultMsg = `ТОЧНЫЙ УДАР! (Точность: ${accuracyRoll}/100) - ГОЛ!`;
-        uiMessage.style.color = "#00ff00";
-    } else if (accuracyRoll > 20) {
-        resultMsg = `ВРАТАРЬ ПОТАЩИЛ! (Точность: ${accuracyRoll}/100)`;
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    } else if (shotOutcome === 'SAVE') {
+        resultMsg = "ВРАТАРЬ ПОТАЩИЛ МЯЧ!";
         uiMessage.style.color = "#FFC107";
-    } else {
-        resultMsg = `АБСОЛЮТНЫЙ ПРОМАХ! МЯЧ В МОЛОКО! (Точность: ${accuracyRoll}/100)`;
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
+        loseLife("ВРАТАРЬ ВЗЯЛ УДАР!");
+        return;
+    } else if (shotOutcome === 'OFF_TARGET') {
+        resultMsg = "МИМО ВОРОТ! УКАТИЛСЯ В КУСТЫ!";
         uiMessage.style.color = "#ff3333";
-        loseLife("НЕ ПОПАЛ ПО ВОРОТАМ!");
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        loseLife("НЕ ПОПАЛ В СТВОР ВОРОТ!");
+        return;
+    } else if (shotOutcome === 'MISS_BALL') {
+        resultMsg = "ПРОМАХ ПО МЯЧУ! КОСЫЙ УДАР!";
+        uiMessage.style.color = "#ff3333";
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        loseLife("МАЗИЛА, НЕ ПОПАЛ ПО МЯЧУ!");
         return;
     }
 
     uiMessage.innerText = resultMsg;
-    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-
     setTimeout(startReception, 3000);
 }
 
@@ -231,6 +292,7 @@ function loseLife(msg) {
     gameState = 'RESULT';
     uiTimingContainer.style.display = 'none';
     uiJuggling.style.display = 'none';
+    btnConfirmAim.style.display = 'none';
     shotMenu.style.display = 'none';
     powerContainer.style.display = 'none';
     uiMessage.innerText = `${msg}\nМИНУС ЖИЗНЬ!`;
@@ -243,6 +305,7 @@ function loseLife(msg) {
 function gameOver() {
     gameState = 'GAMEOVER';
     uiJuggling.style.display = 'none';
+    btnConfirmAim.style.display = 'none';
     shotMenu.style.display = 'none';
     powerContainer.style.display = 'none';
     uiMessage.innerText = `ИГРА ОКОНЧЕНА!\nТвой респект: ${respect}\nКликни для рестарта.`;
@@ -254,11 +317,10 @@ function gameLoop(currentTime) {
     const dt = (currentTime - lastFrameTime) / 1000;
     lastFrameTime = currentTime;
 
-    // Отрисовка двора (ФИКС ПРОПОРЦИЙ ВОРОТ НА МОБИЛКАХ)
+    // Отрисовка двора
     ctx.fillStyle = '#4CAF50'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#607D8B'; ctx.fillRect(0, 0, canvas.width, canvas.height * 0.35);
     
-    // Рендерим правильные горизонтальные пропорции ворот
     const goalWidth = Math.min(canvas.width * 0.7, 450);
     const goalHeight = 120;
     const goalX = (canvas.width - goalWidth) / 2;
@@ -298,21 +360,52 @@ function gameLoop(currentTime) {
         }
     }
 
-    // Фаза прицеливания (перетаскивание мяча по воротам)
     if (gameState === 'AIMING') {
-        ctx.fillStyle = 'rgba(255, 255, 0, 0.5);';
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
         ctx.beginPath();
-        ctx.arc(targetGoalX, targetGoalY, 15, 0, Math.PI * 2);
+        ctx.arc(targetGoalX, targetGoalY, 14, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = '#fff'; ctx.stroke();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(targetGoalX - 8, targetGoalY); ctx.lineTo(targetGoalX + 8, targetGoalY);
+        ctx.moveTo(targetGoalX, targetGoalY - 8); ctx.lineTo(targetGoalX, targetGoalY + 8);
+        ctx.stroke();
     }
 
-    // Фаза шкалы силы
     if (gameState === 'POWER') {
         powerCursorPos += 2.5 * powerDirection;
         if (powerCursorPos >= 100) { powerCursorPos = 100; powerDirection = -1; }
         else if (powerCursorPos <= 0) { powerCursorPos = 0; powerDirection = 1; }
         powerCursor.style.top = `${powerCursorPos}%`;
+    }
+
+    // Анимация полета мяча со скоростью, зависящей от выбранной силы
+    if (gameState === 'SHOT_ANIMATION') {
+        // Скорость зависит от силы (от 0.01 при слабом ударе до 0.08 при максимальном)
+        let speedMultiplier = 0.01 + (selectedPower / 100) * 0.07;
+        
+        if (shotOutcome === 'MISS_BALL') {
+            // Если промахнулся мимо мяча - мяч просто падает вниз с гравитацией
+            ball.y += 6;
+            animProgress = 1;
+            if (ball.y >= groundLevel) {
+                finishShot();
+            }
+        } else {
+            animProgress += speedMultiplier;
+            if (animProgress >= 1) {
+                animProgress = 1;
+                finishShot();
+            }
+            ball.x = animStartX + (animEndX - animStartX) * animProgress;
+            ball.y = animStartY + (animEndY - animStartY) * animProgress;
+            
+            // Если это полет в ворота - уменьшаем спрайт в перспективе
+            if (shotOutcome !== 'MISS_BALL') {
+                ball.size = 35 - (35 - 10) * animProgress;
+            }
+        }
     }
 
     // Рендер мяча
@@ -324,9 +417,8 @@ function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 }
 
-// Обработка тапов и перетаскивания
 window.addEventListener('pointerdown', (e) => {
-    if (e.target.tagName === 'BUTTON' || e.target.closest('#shot-menu')) return; 
+    if (e.target.tagName === 'BUTTON' || e.target.closest('#shot-menu') || e.target.closest('#power-container')) return; 
 
     if (gameState === 'GAMEOVER') {
         lives = 3; respect = 0; uiRespectScore.innerText = respect;
@@ -352,14 +444,12 @@ window.addEventListener('pointerdown', (e) => {
         return;
     }
 
-    // В фазе прицеливания двигаем точку удара пальцем
     if (gameState === 'AIMING') {
         targetGoalX = e.clientX;
         targetGoalY = e.clientY;
         return;
     }
 
-    // В фазе силы тапом фиксируем значение силы
     if (gameState === 'POWER') {
         confirmPower();
         return;
