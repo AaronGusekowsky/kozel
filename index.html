@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Козёл: Дворовая Легенда</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="ui-layer">
+        <div id="top-bar">
+            <div id="lives-board">ЖИЗНИ: <span id="lives-count">❤️❤️❤️</span></div>
+            <div id="respect-board">РЕСПЕКТ: <span id="respect-score">0</span></div>
+        </div>
+
+        <!-- Шкала тайминга с желтыми зонами -->
+        <div id="timing-container">
+            <div id="timing-bar">
+                <div id="timing-target-yellow-left" class="timing-zone yellow"></div>
+                <div id="timing-target-green" class="timing-zone green"></div>
+                <div id="timing-target-yellow-right" class="timing-zone yellow"></div>
+                <div id="timing-cursor"></div>
+            </div>
+            <div id="timer">10.0s</div>
+        </div>
+
+        <div id="message">ПРИГОТОВЬСЯ!</div>
+        
+        <!-- Кнопки чеканки (Круглые для больших пальцев) -->
+        <div id="juggling-ui">
+            <button id="btn-left" class="foot-btn">Л</button>
+            <button id="btn-right" class="foot-btn">П</button>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+    <script src="game.js"></script>
+</body>
+</html>
