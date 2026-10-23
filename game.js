@@ -6,7 +6,7 @@ const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-const groundLevel = canvas.height - 140; 
+const groundLevel = canvas.height - 220; // Подняли красную черту падения выше
 
 // UI Элементы
 const uiTimingContainer = document.getElementById('timing-container');
@@ -135,12 +135,26 @@ function startJuggling(isPerfect) {
 
 function hitBall(foot) {
     if (gameState !== 'JUGGLING') return;
-    if (ball.y < groundLevel - 180) return; 
+    
+    // Мяч должен быть выше красной черты
+    if (ball.y >= groundLevel) return; 
 
-    const isLeft = ball.x <= canvas.width / 2;
-    const isRight = ball.x > canvas.width / 2;
+    const centerX = canvas.width / 2;
+    const centerTolerance = 30; // Зона по центру, где подходит любая нога
+    const isCenter = Math.abs(ball.x - centerX) <= centerTolerance;
+    const isLeft = ball.x < centerX - centerTolerance;
+    const isRight = ball.x > centerX + centerTolerance;
 
-    if ((foot === 'left' && isLeft) || (foot === 'right' && isRight)) {
+    let success = false;
+    if (isCenter) {
+        success = true; // По центру - любая кнопка
+    } else if (foot === 'left' && isLeft) {
+        success = true;
+    } else if (foot === 'right' && isRight) {
+        success = true;
+    }
+
+    if (success) {
         respect += 10;
         jugglingCount++;
         if (uiRespectScore) uiRespectScore.innerText = respect;
@@ -157,7 +171,7 @@ function hitBall(foot) {
         if (uiMessage) uiMessage.style.color = "#00ff00";
         if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     } else {
-        loseLife("ПО НОГАМ СЕБЕ УДАРИЛ!");
+        loseLife("НЕ ТУ НОГУ НАЖАЛ!");
     }
 }
 
@@ -378,7 +392,8 @@ function gameLoop(currentTime) {
         if (ball.x < ball.size) { ball.x = ball.size; ball.vx *= -0.8; }
         if (ball.x > canvas.width - ball.size) { ball.x = canvas.width - ball.size; ball.vx *= -0.8; }
 
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
+        // Рисуем поднятую выше красную линию смерти
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
         ctx.fillRect(0, groundLevel, canvas.width, 4);
 
         if (ball.y + (ball.size/2) > groundLevel) {
@@ -439,6 +454,7 @@ function gameLoop(currentTime) {
 }
 
 window.addEventListener('pointerdown', (e) => {
+    // Не перехватываем клики по кнопкам и элементам интерфейса
     if (e.target.tagName === 'BUTTON' || e.target.closest('#shot-menu') || e.target.closest('#power-container')) return; 
 
     if (gameState === 'GAMEOVER') {
