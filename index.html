@@ -7,17 +7,29 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     
-    <!-- Версия 3, чтобы Телеграм сбросил кэш -->
-    <link rel="stylesheet" href="style.css?v=3">
+    <!-- Версия 4 для сброса кэша -->
+    <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
-    <div id="ui-layer">
+    <!-- Игровой интерфейс (скрыт в главном меню) -->
+    <div id="ui-layer" style="display: none;">
         <div id="top-bar">
-            <div id="lives-board">ЖИЗНИ: <span id="lives-count">❤️❤️❤️</span></div>
-            <div id="respect-board">РЕСПЕКТ: <span id="respect-score">0</span></div>
+            <!-- Счетчик КОЗЁЛ (Слева) -->
+            <div id="kozel-board">
+                <span class="k-letter" id="k-0">К</span>
+                <span class="k-letter" id="k-1">О</span>
+                <span class="k-letter" id="k-2">З</span>
+                <span class="k-letter" id="k-3">Ё</span>
+                <span class="k-letter" id="k-4">Л</span>
+            </div>
+            
+            <!-- Статистика (Справа) -->
+            <div id="stats-board">
+                <div id="lives-board">ЖИЗНИ: <span id="lives-count">❤️❤️❤️</span></div>
+                <div id="respect-board">РЕСПЕКТ: <span id="respect-score">0</span></div>
+            </div>
         </div>
 
-        <!-- Фаза 1: Шкала тайминга -->
         <div id="timing-container">
             <div id="timing-bar">
                 <div id="timing-target-yellow-left" class="timing-zone yellow"></div>
@@ -30,26 +42,23 @@
 
         <div id="message">ПРИГОТОВЬСЯ!</div>
         
-        <!-- Фаза 2: Кнопки ног + Кнопка удара -->
         <div id="juggling-ui">
             <button id="btn-left" class="foot-btn">Л</button>
             <button id="btn-shoot" class="action-btn" style="display: none;">УДАР!</button>
             <button id="btn-right" class="foot-btn">П</button>
         </div>
 
-        <!-- Фаза 3: Меню выбора удара (Кнопку прицеливания убрали) -->
         <div id="shot-menu" style="display: none;">
             <div class="menu-title">ВЫБЕРИ ТИП УДАРА:</div>
             <div class="shot-options">
-                <button class="shot-btn" data-type="toe">Пыр (1 буква)</button>
-                <button class="shot-btn" data-type="instep">Щечка (1 буква)</button>
-                <button class="shot-btn" data-type="knee">Колено (3 буквы)</button>
-                <button class="shot-btn" data-type="head">Голова (2 буквы)</button>
-                <button class="shot-btn" data-type="scissors">Ножницы (5 букв)</button>
+                <button class="shot-btn" data-type="toe" data-cost="1">Пыр (1 буква)</button>
+                <button class="shot-btn" data-type="instep" data-cost="1">Щечка (1 буква)</button>
+                <button class="shot-btn" data-type="head" data-cost="2">Голова (2 буквы)</button>
+                <button class="shot-btn" data-type="knee" data-cost="3">Колено (3 буквы)</button>
+                <button class="shot-btn" data-type="scissors" data-cost="5">Ножницы (5 букв)</button>
             </div>
         </div>
 
-        <!-- Фаза 3: Вертикальная шкала силы -->
         <div id="power-container" style="display: none;">
             <div class="menu-title">СИЛА</div>
             <div id="power-bar">
@@ -58,9 +67,40 @@
         </div>
     </div>
 
+    <!-- ГЛАВНОЕ МЕНЮ -->
+    <div id="main-menu" class="fullscreen-overlay">
+        <h1 class="game-title">КОЗЁЛ</h1>
+        <p class="game-subtitle">Дворовая легенда</p>
+        <button id="btn-menu-start" class="menu-btn">НАЧАТЬ ИГРУ</button>
+        <button id="btn-menu-records" class="menu-btn">РЕКОРДЫ ДВОРА</button>
+        <button id="btn-menu-rules" class="menu-btn">ПРАВИЛА</button>
+        <button id="btn-menu-exit" class="menu-btn exit-btn">ВЫЙТИ</button>
+    </div>
+
+    <!-- ЭКРАН КОНЦА ИГРЫ (Победа/Поражение) -->
+    <div id="game-over-screen" class="fullscreen-overlay" style="display: none;">
+        <h2 id="end-title" class="game-title">ИГРА ОКОНЧЕНА</h2>
+        <p id="end-desc" class="game-subtitle">...</p>
+        <button id="btn-end-retry" class="menu-btn">ПОПРОБОВАТЬ СНОВА</button>
+        <button id="btn-end-home" class="menu-btn">УЙТИ ДОМОЙ</button>
+    </div>
+
+    <!-- ОКНА ПРАВИЛ И РЕКОРДОВ -->
+    <div id="modal-rules" class="modal" style="display: none;">
+        <h3>ПРАВИЛА</h3>
+        <p>1. Поймай мяч в зеленой/желтой зоне шкалы.<br><br>2. Начекань мяч левой (Л) и правой (П) ногой, чтобы не упал на красную черту.<br><br>3. После 3 раз нажми УДАР, выбери точку на воротах, тип удара и силу.<br><br>4. Забивай голы! Вратарь получает буквы К-О-З-Ё-Л. Собрал слово — ты победил!</p>
+        <button class="menu-btn btn-close-modal">ПОНЯТНО</button>
+    </div>
+    
+    <div id="modal-records" class="modal" style="display: none;">
+        <h3>РЕКОРДЫ ДВОРА</h3>
+        <p>Макс. респект: <span id="rec-respect">0</span></p>
+        <p>Лучшее время победы: <span id="rec-time">--</span> сек</p>
+        <button class="menu-btn btn-close-modal">ЗАКРЫТЬ</button>
+    </div>
+
     <canvas id="gameCanvas"></canvas>
     
-    <!-- Версия 3 для скрипта -->
-    <script src="game.js?v=3"></script>
+    <script src="game.js?v=4"></script>
 </body>
 </html>
