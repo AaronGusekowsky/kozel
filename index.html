@@ -6,7 +6,9 @@
     <title>Козёл: Дворовая Легенда</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    
+    <!-- Добавили ?v=2, чтобы Телеграм не брал старый кэш -->
+    <link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
     <div id="ui-layer">
@@ -35,21 +37,24 @@
             <button id="btn-right" class="foot-btn">П</button>
         </div>
 
-        <!-- Фаза 3: Меню выбора удара -->
+        <!-- Фаза 3.1: Кнопка подтверждения прицела -->
+        <button id="btn-confirm-aim" class="action-btn" style="display: none;">ЦЕЛЬ ВЫБРАНА 👉</button>
+
+        <!-- Фаза 3.2: Меню выбора удара -->
         <div id="shot-menu" style="display: none;">
-            <div class="menu-title">ВЫБЕРИ УДАР:</div>
+            <div class="menu-title">ВЫБЕРИ ТИП УДАРА:</div>
             <div class="shot-options">
-                <button class="shot-btn" data-type="toe">Пыр (1б)</button>
-                <button class="shot-btn" data-type="instep">Щечка (1б)</button>
-                <button class="shot-btn" data-type="knee">Колено (2б)</button>
-                <button class="shot-btn" data-type="head">Голова (2б)</button>
-                <button class="shot-btn" data-type="scissors">Ножницы (5б)</button>
+                <button class="shot-btn" data-type="toe">Пыр (1 буква)</button>
+                <button class="shot-btn" data-type="instep">Щечка (1 буква)</button>
+                <button class="shot-btn" data-type="knee">Колено (3 буквы)</button>
+                <button class="shot-btn" data-type="head">Голова (2 буквы)</button>
+                <button class="shot-btn" data-type="scissors">Ножницы (5 букв)</button>
             </div>
         </div>
 
-        <!-- Фаза 3: Вертикальная шкала силы -->
+        <!-- Фаза 3.3: Вертикальная шкала силы -->
         <div id="power-container" style="display: none;">
-            <div class="menu-title">ЖМИ ДЛЯ СИЛЫ!</div>
+            <div class="menu-title">СИЛА</div>
             <div id="power-bar">
                 <div id="power-cursor"></div>
             </div>
@@ -57,6 +62,8 @@
     </div>
 
     <canvas id="gameCanvas"></canvas>
-    <script src="game.js"></script>
+    
+    <!-- И здесь тоже добавили ?v=2 -->
+    <script src="game.js?v=2"></script>
 </body>
 </html>
