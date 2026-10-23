@@ -9,7 +9,7 @@ canvas.height = window.innerHeight;
 const groundLevel = canvas.height - 220; 
 const ceilingLevel = 90; 
 
-// ЗАГРУЗКА АССЕТОВ ИЗ ПАПКИ ASSETS
+// ЗАГРУЗКА АССЕТОВ
 const images = {
     bg: new Image(),
     goals: new Image(),
@@ -56,7 +56,6 @@ let powerCursorPos = 0, powerDirection = 1, selectedPower = 50;
 let animStartX = 0, animStartY = 0, animEndX = 0, animEndY = 0, animProgress = 0;
 let shotOutcome = 'GOAL'; 
 
-// Переменные вратаря
 let gkX = 0;
 let gkWidth = 60;
 let gkHeight = 70;
@@ -97,12 +96,12 @@ function startNewGame() {
 
 function updateUI() {
     if (uiRespectScore) uiRespectScore.innerText = respect;
-    let hearts = '';
-    for (let i = 0; i < lives; i++) hearts += '❤️';
-    for (let i = 0; i < (3 - lives); i++) hearts += '🖤';
+    let hearts = "";
+    for (let i = 0; i < lives; i++) hearts += "❤️";
+    for (let i = 0; i < (3 - lives); i++) hearts += "🖤";
     if (uiLivesCount) uiLivesCount.innerText = hearts;
     for (let i = 0; i < 5; i++) {
-        let letterSpan = document.getElementById(`k-${i}`);
+        let letterSpan = document.getElementById("k-" + i);
         if (letterSpan) {
             if (i < kozelLetters) letterSpan.classList.add('active');
             else letterSpan.classList.remove('active');
@@ -158,13 +157,13 @@ function startReception() {
     shotMenu.style.display = 'none';
     powerContainer.style.display = 'none';
     
-    document.getElementById('timing-target-green').style.left = `${targetZone.pos}%`;
-    document.getElementById('timing-target-green').style.width = `${targetZone.greenWidth}%`;
-    document.getElementById('timing-target-green').style.transform = 'translateX(-50%)';
-    document.getElementById('timing-target-yellow-left').style.left = `${targetZone.pos - (targetZone.greenWidth / 2) - targetZone.yellowWidth}%`;
-    document.getElementById('timing-target-yellow-left').style.width = `${targetZone.yellowWidth}%`;
-    document.getElementById('timing-target-yellow-right').style.left = `${targetZone.pos + (targetZone.greenWidth / 2)}%`;
-    document.getElementById('timing-target-yellow-right').style.width = `${targetZone.yellowWidth}%`;
+    document.getElementById('timing-target-green').style.left = targetZone.pos + "%";
+    document.getElementById('timing-target-green').style.width = targetZone.greenWidth + "%";
+    document.getElementById('timing-target-green').style.transform = "translateX(-50%)";
+    document.getElementById('timing-target-yellow-left').style.left = (targetZone.pos - (targetZone.greenWidth / 2) - targetZone.yellowWidth) + "%";
+    document.getElementById('timing-target-yellow-left').style.width = targetZone.yellowWidth + "%";
+    document.getElementById('timing-target-yellow-right').style.left = (targetZone.pos + (targetZone.greenWidth / 2)) + "%";
+    document.getElementById('timing-target-yellow-right').style.width = targetZone.yellowWidth + "%";
 
     uiMessage.innerText = "ПРИЕМ!";
     uiMessage.style.color = "#fff";
@@ -211,7 +210,7 @@ function hitBall(foot) {
             btnShoot.style.display = 'flex';
             uiMessage.innerText = "МОЖНО БИТЬ ИЛИ НАБИВАТЬ!";
         } else {
-            uiMessage.innerText = `НАБИТО: ${jugglingCount}/3`;
+            uiMessage.innerText = "НАБИТО: " + jugglingCount + "/3";
         }
         uiMessage.style.color = "#00ff00";
         if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
@@ -252,4 +251,284 @@ function startPowerPhase() {
 function confirmPower() {
     if (gameState !== 'POWER') return;
     selectedPower = powerCursorPos; 
-    powerContainer.style.display = 'none
+    powerContainer.style.display = 'none';
+    startShotAnimation();
+}
+
+function startShotAnimation() {
+    gameState = 'SHOT_ANIMATION';
+    uiMessage.innerText = "УДАР!";
+    uiMessage.style.color = "#ffff00";
+    animStartX = ball.x;
+    animStartY = ball.y;
+    animProgress = 0;
+    
+    gkAnimStartX = gkX; 
+    let gkCenter = gkX + gkWidth / 2;
+
+    let missChance = 3 + (selectedPower * 0.15); 
+    let roll = Math.random() * 100;
+    const gb = getGoalBounds();
+
+    if (roll < missChance) {
+        if (roll < missChance * 0.2) {
+            shotOutcome = 'MISS_BALL';
+            ball.vy = 0;
+            ball.ay = 0.5;
+        } else {
+            shotOutcome = 'OFF_TARGET';
+            animEndX = targetGoalX + (targetGoalX > gb.x + gb.width / 2 ? 150 : -150); 
+            animEndY = gb.y - 100;
+        }
+        gkAnimEndX = Math.max(gb.x, Math.min(gb.x + gb.width - gkWidth, targetGoalX - gkWidth / 2));
+    } else {
+        let dist = Math.abs(targetGoalX - gkCenter);
+        let saveChance = 85 - (dist * 0.35);
+        saveChance -= (selectedPower * 0.2);
+        saveChance = Math.max(30, Math.min(95, saveChance));
+        
+        if (Math.random() * 100 < saveChance) {
+            shotOutcome = 'SAVE'; 
+            animEndX = targetGoalX;
+            animEndY = targetGoalY;
+            gkAnimEndX = Math.max(gb.x, Math.min(gb.x + gb.width - gkWidth, targetGoalX - gkWidth / 2));
+        } else {
+            shotOutcome = 'GOAL'; 
+            animEndX = targetGoalX;
+            animEndY = targetGoalY;
+            if (dist < 100) {
+                gkAnimEndX = gkX + (targetGoalX > gkCenter ? 40 : -40); 
+            } else {
+                gkAnimEndX = gkX + (Math.random() > 0.5 ? 60 : -60);
+            }
+            gkAnimEndX = Math.max(gb.x, Math.min(gb.x + gb.width - gkWidth, gkAnimEndX));
+        }
+    }
+}
+
+function finishShot() {
+    let resultMsg = "";
+    if (shotOutcome === 'GOAL') {
+        resultMsg = "ГОЛ!";
+        uiMessage.style.color = "#00ff00";
+        kozelLetters = Math.min(5, kozelLetters + selectedShotCost); 
+        updateUI();
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    } else if (shotOutcome === 'SAVE') {
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
+        return loseLife("ВРАТАРЬ ПОТАЩИЛ МЯЧ!");
+    } else if (shotOutcome === 'OFF_TARGET') {
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        return loseLife("НЕ ПОПАЛ В СТВОР!");
+    } else if (shotOutcome === 'MISS_BALL') {
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        return loseLife("НЕ ПОПАЛ ПО МЯЧУ!");
+    }
+    
+    gameState = 'RESULT';
+    uiMessage.innerText = resultMsg;
+    setTimeout(startReception, 2000);
+}
+
+function loseLife(msg) {
+    lives--;
+    updateUI();
+    gameState = 'RESULT';
+    uiTimingContainer.style.display = 'none';
+    uiJuggling.style.display = 'none';
+    shotMenu.style.display = 'none';
+    powerContainer.style.display = 'none';
+    uiMessage.innerText = msg + "\nМИНУС ЖИЗНЬ!";
+    uiMessage.style.color = "#ff3333";
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+    setTimeout(startReception, 2000);
+}
+
+function processGameOver(isWin) {
+    gameState = 'GAMEOVER';
+    uiLayer.style.display = 'none';
+    gameOverScreen.style.display = 'flex'; 
+    if (isWin) {
+        let timeTaken = Math.floor((performance.now() - gameStartTime) / 1000);
+        endTitle.innerText = "ПОБЕДА!";
+        endTitle.style.color = "#00ff00";
+        endDesc.innerHTML = "Ты наказал вратаря!<br>Он стал КОЗЛОМ за " + timeTaken + " сек.<br>Твой респект: " + respect;
+        saveRecord(respect, timeTaken);
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    } else {
+        endTitle.innerText = "ПОРАЖЕНИЕ";
+        endTitle.style.color = "#ff3333";
+        endDesc.innerHTML = "У тебя кончились попытки.<br>Твой респект: " + respect;
+        saveRecord(respect, 9999);
+    }
+}
+
+function gameLoop(currentTime) {
+    const dt = (currentTime - lastFrameTime) / 1000;
+    lastFrameTime = currentTime;
+
+    if (images.bg.complete && images.bg.naturalWidth !== 0) {
+        ctx.drawImage(images.bg, 0, 0, canvas.width, canvas.height);
+    } else {
+        ctx.fillStyle = '#4CAF50'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    const gb = getGoalBounds();
+
+    if (gkX === 0) gkX = gb.x + (gb.width / 2) - (gkWidth / 2);
+
+    if (gameState !== 'SHOT_ANIMATION' && gameState !== 'RESULT' && gameState !== 'GAMEOVER') {
+        let time = performance.now() / 1000;
+        let center = gb.x + (gb.width / 2) - (gkWidth / 2); 
+        let range = (gb.width / 2) - (gkWidth / 2) - 10;
+        gkX = center + Math.sin(time * 2.5) * range; 
+    } else if (gameState === 'SHOT_ANIMATION') {
+        gkX = gkAnimStartX + (gkAnimEndX - gkAnimStartX) * Math.min(animProgress * 1.5, 1);
+    }
+
+    if (images.gk.complete && images.gk.naturalWidth !== 0) {
+        ctx.drawImage(images.gk, gkX, gb.y + gb.height - gkHeight, gkWidth, gkHeight);
+    } else {
+        ctx.fillStyle = '#ff5722'; ctx.fillRect(gkX, gb.y + gb.height - gkHeight, gkWidth, gkHeight);
+    }
+
+    if (images.goals.complete && images.goals.naturalWidth !== 0) {
+        ctx.drawImage(images.goals, gb.x, gb.y, gb.width, gb.height);
+    } else {
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.strokeRect(gb.x, gb.y, gb.width, gb.height);
+    }
+
+    if (gameState === 'MENU' || gameState === 'GAMEOVER') {
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+
+    if (gameState === 'RECEPTION') {
+        ball.y += ball.vy;
+        ball.x += ball.vx;
+        ball.size += ball.sizeSpeed;
+        cursor.pos += cursor.speed * cursor.direction;
+        if (cursor.pos >= 100) { cursor.pos = 100; cursor.direction = -1; } 
+        else if (cursor.pos <= 0) { cursor.pos = 0; cursor.direction = 1; }
+        if (uiCursor) uiCursor.style.left = cursor.pos + "%";
+
+        timeLeft -= dt;
+        if (uiTimer) {
+            uiTimer.innerText = Math.max(0, timeLeft).toFixed(1) + "s";
+            uiTimer.style.color = timeLeft <= 3 ? "#ff3333" : "#ffcc00";
+        }
+        if (timeLeft <= 0) loseLife("ВРЕМЯ ВЫШЛО!");
+    }
+
+    if (gameState === 'JUGGLING') {
+        ball.vy += ball.ay;
+        ball.x += ball.vx;
+        ball.y += ball.vy;
+
+        if (ball.x < ball.size) { ball.x = ball.size; ball.vx *= -0.8; }
+        if (ball.x > canvas.width - ball.size) { ball.x = canvas.width - ball.size; ball.vx *= -0.8; }
+
+        if (ball.y - ball.size < ceilingLevel) {
+            ball.y = ceilingLevel + ball.size;
+            if (ball.vy < 0) ball.vy *= -0.4; 
+        }
+
+        if (images.feet.complete && images.feet.naturalWidth !== 0) {
+            ctx.drawImage(images.feet, canvas.width / 2 - 100, canvas.height - 240, 200, 220);
+        }
+
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+        ctx.fillRect(0, groundLevel, canvas.width, 4);
+        if (ball.y + (ball.size / 2) > groundLevel) loseLife("МЯЧ УПАЛ НА ЗЕМЛЮ!");
+    }
+
+    if (gameState === 'SELECT_SHOT' || gameState === 'POWER') {
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+        ctx.beginPath(); ctx.arc(targetGoalX, targetGoalY, 14, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(targetGoalX - 8, targetGoalY); ctx.lineTo(targetGoalX + 8, targetGoalY);
+        ctx.moveTo(targetGoalX, targetGoalY - 8); ctx.lineTo(targetGoalX, targetGoalY + 8);
+        ctx.stroke();
+    }
+
+    if (gameState === 'POWER') {
+        powerCursorPos += 2.5 * powerDirection;
+        if (powerCursorPos >= 100) { powerCursorPos = 100; powerDirection = -1; }
+        else if (powerCursorPos <= 0) { powerCursorPos = 0; powerDirection = 1; }
+        if (powerCursor) powerCursor.style.top = (100 - powerCursorPos) + "%";
+    }
+
+    if (gameState === 'SHOT_ANIMATION') {
+        let speedMultiplier = 0.015 + (selectedPower / 100) * 0.065;
+        if (shotOutcome === 'MISS_BALL') {
+            ball.vy += ball.ay;
+            ball.y += ball.vy;
+            if (ball.y >= groundLevel) finishShot();
+        } else {
+            animProgress += speedMultiplier;
+            if (animProgress >= 1) {
+                animProgress = 1;
+                finishShot();
+            }
+            ball.x = animStartX + (animEndX - animStartX) * animProgress;
+            ball.y = animStartY + (animEndY - animStartY) * animProgress;
+            ball.size = 35 - (35 - 12) * animProgress;
+        }
+    }
+
+    if (images.ball.complete && images.ball.naturalWidth !== 0) {
+        ctx.drawImage(images.ball, ball.x - ball.size, ball.y - ball.size, ball.size * 2, ball.size * 2);
+    } else {
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.size, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff'; ctx.fill();
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.stroke();
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
+window.addEventListener('pointerdown', (e) => {
+    if (gameState === 'MENU' || gameState === 'GAMEOVER') return;
+    if (e.target.tagName === 'BUTTON' || e.target.closest('#shot-menu') || e.target.closest('#power-container')) return; 
+
+    if (gameState === 'RECEPTION') {
+        const gL = targetZone.pos - (targetZone.greenWidth / 2);
+        const gR = targetZone.pos + (targetZone.greenWidth / 2);
+        const yL = gL - targetZone.yellowWidth;
+        const yR = gR + targetZone.yellowWidth;
+        if (cursor.pos >= gL && cursor.pos <= gR) {
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+            startJuggling(true); 
+        } else if (cursor.pos >= yL && cursor.pos <= yR) {
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            startJuggling(false);
+        } else {
+            loseLife("СОРВАЛ ТАЙМИНГ!");
+        }
+        return;
+    }
+
+    if (gameState === 'AIMING') {
+        const gb = getGoalBounds();
+        if (e.clientX >= gb.x && e.clientX <= gb.x + gb.width && e.clientY >= gb.y && e.clientY <= gb.y + gb.height) {
+            targetGoalX = e.clientX;
+            targetGoalY = e.clientY;
+            gameState = 'SELECT_SHOT';
+            shotMenu.style.display = 'block';
+            uiMessage.innerText = "ВЫБЕРИ ТИП УДАРА";
+            uiMessage.style.color = "#ffcc00";
+            if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+        }
+        return;
+    }
+
+    if (gameState === 'POWER') {
+        confirmPower();
+        return;
+    }
+});
+
+initMenu();
+requestAnimationFrame(gameLoop);
