@@ -2,9 +2,8 @@ const tg = window.Telegram.WebApp;
 tg.expand();
 
 const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d', { alpha: false }); // Отключаем прозрачность подложки canvas для ускорения рендера
+const ctx = canvas.getContext('2d', { alpha: false });
 
-// Кэшируем все DOM-элементы один раз при старте
 const uiLayer = document.getElementById('ui-layer');
 const mainMenu = document.getElementById('main-menu');
 const gameOverScreen = document.getElementById('game-over-screen');
@@ -12,7 +11,6 @@ const endTitle = document.getElementById('end-title');
 const endDesc = document.getElementById('end-desc');
 
 const uiTimingContainer = document.getElementById('timing-container');
-const uiTimingBar = document.getElementById('timing-bar');
 const uiCursor = document.getElementById('timing-cursor');
 const uiTargetGreen = document.getElementById('timing-target-green');
 const uiTargetYellowLeft = document.getElementById('timing-target-yellow-left');
@@ -25,7 +23,6 @@ const uiJuggling = document.getElementById('juggling-ui');
 const btnShoot = document.getElementById('btn-shoot');
 const shotMenu = document.getElementById('shot-menu');
 const powerContainer = document.getElementById('power-container');
-const powerBar = document.getElementById('power-bar');
 const powerCursor = document.getElementById('power-cursor');
 
 const modalRules = document.getElementById('modal-rules');
@@ -40,7 +37,6 @@ const kozelSpans = [
     document.getElementById('k-4')
 ];
 
-// Ассеты с флагами готовности (чтобы не проверять naturalWidth каждый кадр)
 const assets = {
     bg: { img: new Image(), ready: false },
     goals: { img: new Image(), ready: false },
@@ -54,7 +50,13 @@ Object.keys(assets).forEach(key => {
     assets[key].img.src = 'assets/' + key + '.png';
 });
 
-// Геометрия экрана и ворот (кэшируется при ресайзе)
+// Размеры вратаря (соразмерно новым воротам)
+const gkWidth = 70;
+const gkHeight = 82;
+let gkX = 0;
+let gkAnimStartX = 0;
+let gkAnimEndX = 0;
+
 let groundLevel = 0;
 const ceilingLevel = 90;
 let goalBounds = { x: 0, y: 0, width: 0, height: 0, bottomY: 0 };
@@ -62,12 +64,13 @@ let goalBounds = { x: 0, y: 0, width: 0, height: 0, bottomY: 0 };
 function updateScreenMetrics() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    ctx.imageSmoothingEnabled = false; // Сохраняем четкость пиксель-арта
+    ctx.imageSmoothingEnabled = false;
 
     groundLevel = canvas.height - 220;
 
-    const goalWidth = Math.min(canvas.width * 0.75, 450);
-    const goalHeight = 140;
+    // УМЕНЬШЕННЫЕ ВОРОТА: 55% ширины экрана (от 200px до 280px) и 105px в высоту
+    const goalWidth = Math.max(200, Math.min(canvas.width * 0.55, 280));
+    const goalHeight = 105;
     const goalBottomY = canvas.height * 0.48;
     goalBounds = {
         x: (canvas.width - goalWidth) / 2,
@@ -76,19 +79,21 @@ function updateScreenMetrics() {
         height: goalHeight,
         bottomY: goalBottomY
     };
+
+    // Центрируем вратаря при ресайзе
+    gkX = goalBounds.x + (goalBounds.width - gkWidth) * 0.5;
 }
 
 window.addEventListener('resize', updateScreenMetrics);
 updateScreenMetrics();
 
-// Игровые переменные
 let lives = 3;
 let respect = 0;
 let jugglingCount = 0; 
 let kozelLetters = 0; 
 let gameStartTime = 0;
 let gameState = 'MENU'; 
-let roundTimerId = null; // Защита от наложения таймеров
+let roundTimerId = null;
 
 let ball = { x: 0, y: 0, size: 20, vx: 0, vy: 0, sizeSpeed: 0, ay: 0 };
 let targetGoalX = 0, targetGoalY = 0;
@@ -97,18 +102,11 @@ let powerCursorPos = 0, powerDirection = 1, selectedPower = 50;
 let animStartX = 0, animStartY = 0, animEndX = 0, animEndY = 0, animProgress = 0;
 let shotOutcome = 'GOAL'; 
 
-const gkWidth = 64;
-const gkHeight = 72;
-let gkX = 0;
-let gkAnimStartX = 0;
-let gkAnimEndX = 0;
-
 let cursor = { pos: 0, speed: 1.2, direction: 1 };
 const targetZone = { pos: 50, greenWidth: 8, yellowWidth: 16 };
 let timeLeft = 10.0;
 let lastFrameTime = performance.now();
 
-// Предварительная установка статичных зон шкалы тайминга
 uiTargetGreen.style.left = targetZone.pos + "%";
 uiTargetGreen.style.width = targetZone.greenWidth + "%";
 uiTargetGreen.style.transform = "translateX(-50%)";
@@ -190,12 +188,12 @@ function startReception() {
     
     ball.x = canvas.width * 0.5;
     ball.y = goalBounds.bottomY - 20;
-    ball.size = 12;
+    ball.size = 10;
     
     const targetY = canvas.height * 0.72;
-    ball.vy = (targetY - ball.y) / 600; // Базовая скорость под 60 FPS
+    ball.vy = (targetY - ball.y) / 600;
     ball.vx = 0;
-    ball.sizeSpeed = (35 - 12) / 600; 
+    ball.sizeSpeed = (35 - 10) / 600; 
     ball.ay = 0; 
     
     cursor.pos = Math.random() * 100;
@@ -316,13 +314,15 @@ function startShotAnimation() {
             ball.ay = 0.5;
         } else {
             shotOutcome = 'OFF_TARGET';
-            animEndX = targetGoalX + (targetGoalX > goalBounds.x + goalBounds.width * 0.5 ? 140 : -140); 
-            animEndY = goalBounds.y - 70;
+            // Промах соразмерно ширине новых ворот
+            animEndX = targetGoalX + (targetGoalX > goalBounds.x + goalBounds.width * 0.5 ? 90 : -90); 
+            animEndY = goalBounds.y - 50;
         }
         gkAnimEndX = Math.max(goalBounds.x, Math.min(goalBounds.x + goalBounds.width - gkWidth, targetGoalX - gkWidth * 0.5));
     } else {
         let dist = Math.abs(targetGoalX - gkCenter);
-        let saveChance = 85 - (dist * 0.35) - (selectedPower * 0.2);
+        // Скорректирована формула под уменьшенную ширину ворот
+        let saveChance = 88 - (dist * 0.55) - (selectedPower * 0.2);
         saveChance = Math.max(30, Math.min(95, saveChance));
         
         animEndX = targetGoalX;
@@ -333,7 +333,7 @@ function startShotAnimation() {
             gkAnimEndX = Math.max(goalBounds.x, Math.min(goalBounds.x + goalBounds.width - gkWidth, targetGoalX - gkWidth * 0.5));
         } else {
             shotOutcome = 'GOAL'; 
-            let offset = (dist < 80) ? (targetGoalX > gkCenter ? 35 : -35) : (Math.random() > 0.5 ? 50 : -50);
+            let offset = (dist < 50) ? (targetGoalX > gkCenter ? 25 : -25) : (Math.random() > 0.5 ? 35 : -35);
             gkAnimEndX = Math.max(goalBounds.x, Math.min(goalBounds.x + goalBounds.width - gkWidth, gkX + offset));
         }
     }
@@ -396,9 +396,8 @@ function processGameOver(isWin) {
 }
 
 function gameLoop(currentTime) {
-    // Ограничиваем dt (макс 0.1 сек), чтобы при сворачивании вкладки мяч не телепортировался
     const dt = Math.min((currentTime - lastFrameTime) / 1000, 0.1);
-    const frameScale = dt * 60; // Множитель для независимости физики от герцовки экрана (60Hz / 120Hz)
+    const frameScale = dt * 60;
     lastFrameTime = currentTime;
 
     // 1. Фон двора
@@ -409,12 +408,10 @@ function gameLoop(currentTime) {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // 2. Вратарь
-    if (gkX === 0) gkX = goalBounds.x + (goalBounds.width - gkWidth) * 0.5;
-
+    // 2. Вратарь (ходит строго в пределах новых уменьшенных ворот)
     if (gameState !== 'SHOT_ANIMATION' && gameState !== 'RESULT' && gameState !== 'GAMEOVER') {
         let center = goalBounds.x + (goalBounds.width - gkWidth) * 0.5; 
-        let range = (goalBounds.width - gkWidth) * 0.5 - 10;
+        let range = Math.max(10, (goalBounds.width - gkWidth) * 0.5 - 6);
         gkX = center + Math.sin(currentTime * 0.0025) * range; 
     } else if (gameState === 'SHOT_ANIMATION') {
         gkX = gkAnimStartX + (gkAnimEndX - gkAnimStartX) * Math.min(animProgress * 1.5, 1);
@@ -428,7 +425,7 @@ function gameLoop(currentTime) {
         ctx.fillRect(gkX, gkY, gkWidth, gkHeight);
     }
 
-    // 3. Ворота
+    // 3. Ворота (рисуются по уменьшенным координатам goalBounds)
     if (assets.goals.ready) {
         ctx.drawImage(assets.goals.img, goalBounds.x, goalBounds.y, goalBounds.width, goalBounds.height);
     } else {
@@ -483,16 +480,16 @@ function gameLoop(currentTime) {
     if (gameState === 'SELECT_SHOT' || gameState === 'POWER') {
         ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
         ctx.beginPath();
-        ctx.arc(targetGoalX, targetGoalY, 14, 0, Math.PI * 2);
+        ctx.arc(targetGoalX, targetGoalY, 12, 0, Math.PI * 2);
         ctx.fill();
         ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2;
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(targetGoalX - 8, targetGoalY);
-        ctx.lineTo(targetGoalX + 8, targetGoalY);
-        ctx.moveTo(targetGoalX, targetGoalY - 8);
-        ctx.lineTo(targetGoalX, targetGoalY + 8);
+        ctx.moveTo(targetGoalX - 6, targetGoalY);
+        ctx.lineTo(targetGoalX + 6, targetGoalY);
+        ctx.moveTo(targetGoalX, targetGoalY - 6);
+        ctx.lineTo(targetGoalX, targetGoalY + 6);
         ctx.stroke();
     }
 
@@ -517,7 +514,7 @@ function gameLoop(currentTime) {
             }
             ball.x = animStartX + (animEndX - animStartX) * animProgress;
             ball.y = animStartY + (animEndY - animStartY) * animProgress;
-            ball.size = 35 - 23 * animProgress;
+            ball.size = 35 - 25 * animProgress; // В конце полета мяч чуть меньше (10px) под размер новых ворот
         }
     }
 
@@ -560,6 +557,7 @@ window.addEventListener('pointerdown', (e) => {
     }
 
     if (gameState === 'AIMING') {
+        // Зона выбора точки удара автоматически берется из уменьшенного goalBounds
         if (e.clientX >= goalBounds.x && e.clientX <= goalBounds.x + goalBounds.width &&
             e.clientY >= goalBounds.y && e.clientY <= goalBounds.bottomY) {
             targetGoalX = e.clientX;
