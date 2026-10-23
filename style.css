@@ -27,37 +27,65 @@ body {
 #timing-bar {
     position: relative; width: 100%; height: 30px; background: #333; border: 2px solid #555; overflow: hidden;
 }
-.timing-zone {
-    position: absolute; height: 100%; top: 0;
-}
+.timing-zone { position: absolute; height: 100%; top: 0; }
 .green { background: #4CAF50; box-shadow: 0 0 10px #4CAF50; z-index: 2; }
 .yellow { background: #FFC107; box-shadow: 0 0 10px #FFC107; z-index: 1; }
-
 #timing-cursor {
     position: absolute; width: 6px; height: 100%; background: #fff; left: 0%; top:0; box-shadow: 0 0 8px #fff; z-index: 10;
 }
 #timer { text-align: center; margin-top: 10px; font-size: 14px; color: #ffcc00; }
 
 #message {
-    font-size: 14px; color: #ffff00; text-align: center; background: rgba(0, 0, 0, 0.8);
-    padding: 15px; margin-bottom: 40px; border: 2px solid #ffff00; border-radius: 5px; width: 90%;
+    font-size: 12px; color: #ffff00; text-align: center; background: rgba(0, 0, 0, 0.8);
+    padding: 12px; margin-bottom: 30px; border: 2px solid #ffff00; border-radius: 5px; width: 90%;
 }
 
-/* Кнопки ног (Круглые, под большие пальцы) */
+/* Кнопки чеканки и удара */
 #juggling-ui {
     position: absolute; bottom: 0; left: 0; width: 100%; height: 160px;
-    display: none; pointer-events: auto;
+    display: none; pointer-events: auto; justify-content: space-between; padding: 0 20px; align-items: center;
 }
 .foot-btn {
-    position: absolute; bottom: 30px;
-    width: 80px; height: 80px; border-radius: 50%;
-    background: #ffcc00; border: 4px solid #fff;
-    font-family: inherit; font-size: 24px; font-weight: bold; color: #333;
-    box-shadow: 0 6px 0 #b38f00; outline: none; transition: 0.1s;
-    display: flex; justify-content: center; align-items: center;
+    width: 75px; height: 75px; border-radius: 50%; background: #ffcc00; border: 4px solid #fff;
+    font-family: inherit; font-size: 22px; font-weight: bold; color: #333;
+    box-shadow: 0 6px 0 #b38f00; display: flex; justify-content: center; align-items: center;
 }
-#btn-left { left: 20px; }
-#btn-right { right: 20px; }
-.foot-btn:active {
-    transform: translateY(6px); box-shadow: 0 0 0 #b38f00;
+.action-btn {
+    width: 100px; height: 100px; border-radius: 50%; background: #ff3333; border: 4px solid #fff;
+    font-family: inherit; font-size: 12px; font-weight: bold; color: #fff;
+    box-shadow: 0 6px 0 #990000; display: flex; justify-content: center; align-items: center;
+    animation: pulse 1s infinite alternate;
+}
+@keyframes pulse {
+    from { transform: scale(1); }
+    to { transform: scale(1.08); }
+}
+.foot-btn:active, .action-btn:active { transform: translateY(6px); box-shadow: 0 0 0 #b38f00; }
+
+/* Фаза 3: Меню выбора удара */
+#shot-menu {
+    position: absolute; bottom: 30px; background: rgba(0,0,0,0.9); border: 3px solid #fff;
+    padding: 15px; border-radius: 10px; width: 90%; max-width: 400px; pointer-events: auto; text-align: center;
+}
+.menu-title { font-size: 12px; margin-bottom: 10px; color: #ffcc00; }
+.shot-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.shot-btn {
+    background: #333; color: #fff; border: 2px solid #777; padding: 10px;
+    font-family: inherit; font-size: 10px; border-radius: 5px; cursor: pointer;
+}
+.shot-btn:hover { background: #555; border-color: #fff; }
+
+/* Вертикальная шкала силы */
+#power-container {
+    position: absolute; right: 20px; top: 100px; width: 40px; height: 250px;
+    background: rgba(0,0,0,0.8); border: 3px solid #fff; border-radius: 5px;
+    padding: 5px; pointer-events: auto; display: flex; flex-direction: column; align-items: center;
+}
+#power-bar {
+    position: relative; width: 100%; height: 100%; background: linear-gradient(to top, #4CAF50, #FFC107, #F44336);
+    border: 1px solid #555; overflow: hidden; border-radius: 3px;
+}
+#power-cursor {
+    position: absolute; width: 100%; height: 6px; background: #fff; left: 0; top: 0;
+    box-shadow: 0 0 5px #fff;
 }

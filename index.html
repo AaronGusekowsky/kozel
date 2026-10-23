@@ -15,7 +15,7 @@
             <div id="respect-board">РЕСПЕКТ: <span id="respect-score">0</span></div>
         </div>
 
-        <!-- Шкала тайминга с желтыми зонами -->
+        <!-- Фаза 1: Шкала тайминга -->
         <div id="timing-container">
             <div id="timing-bar">
                 <div id="timing-target-yellow-left" class="timing-zone yellow"></div>
@@ -28,10 +28,31 @@
 
         <div id="message">ПРИГОТОВЬСЯ!</div>
         
-        <!-- Кнопки чеканки (Круглые для больших пальцев) -->
+        <!-- Фаза 2: Кнопки ног + Кнопка удара -->
         <div id="juggling-ui">
             <button id="btn-left" class="foot-btn">Л</button>
+            <button id="btn-shoot" class="action-btn" style="display: none;">УДАР!</button>
             <button id="btn-right" class="foot-btn">П</button>
+        </div>
+
+        <!-- Фаза 3: Меню выбора удара -->
+        <div id="shot-menu" style="display: none;">
+            <div class="menu-title">ВЫБЕРИ УДАР:</div>
+            <div class="shot-options">
+                <button class="shot-btn" data-type="toe">Пыр (1б)</button>
+                <button class="shot-btn" data-type="instep">Щечка (1б)</button>
+                <button class="shot-btn" data-type="knee">Колено (2б)</button>
+                <button class="shot-btn" data-type="head">Голова (2б)</button>
+                <button class="shot-btn" data-type="scissors">Ножницы (5б)</button>
+            </div>
+        </div>
+
+        <!-- Фаза 3: Вертикальная шкала силы -->
+        <div id="power-container" style="display: none;">
+            <div class="menu-title">ЖМИ ДЛЯ СИЛЫ!</div>
+            <div id="power-bar">
+                <div id="power-cursor"></div>
+            </div>
         </div>
     </div>
 
