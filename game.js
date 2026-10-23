@@ -36,12 +36,11 @@ let targetGoalY = canvas.height * 0.25;
 let selectedShotType = null;
 let powerCursorPos = 0; 
 let powerDirection = 1;
-let selectedPower = 50; // Сила удара (0-100)
+let selectedPower = 50; 
 
-// Переменные для анимации полета мяча
 let animStartX = 0, animStartY = 0, animEndX = 0, animEndY = 0;
 let animProgress = 0;
-let shotOutcome = 'GOAL'; // GOAL, SAVE, OFF_TARGET, MISS_BALL
+let shotOutcome = 'GOAL'; 
 
 const trajectories = [
     { name: "Прямой навес", startX: 0.5 },
@@ -78,40 +77,52 @@ function startReception() {
     cursor.pos = Math.random() * 100;
     cursor.speed = 1.2 + (3 - lives) * 0.3; 
     
-    uiTimingContainer.style.display = 'block';
-    uiJuggling.style.display = 'none';
-    btnConfirmAim.style.display = 'none';
-    shotMenu.style.display = 'none';
-    powerContainer.style.display = 'none';
+    if (uiTimingContainer) uiTimingContainer.style.display = 'block';
+    if (uiJuggling) uiJuggling.style.display = 'none';
+    if (btnConfirmAim) btnConfirmAim.style.display = 'none';
+    if (shotMenu) shotMenu.style.display = 'none';
+    if (powerContainer) powerContainer.style.display = 'none';
     
-    uiTargetGreen.style.left = `${targetZone.pos}%`;
-    uiTargetGreen.style.width = `${targetZone.greenWidth}%`;
-    uiTargetGreen.style.transform = 'translateX(-50%)';
-    uiTargetYellowLeft.style.left = `${targetZone.pos - (targetZone.greenWidth/2) - targetZone.yellowWidth}%`;
-    uiTargetYellowLeft.style.width = `${targetZone.yellowWidth}%`;
-    uiTargetYellowRight.style.left = `${targetZone.pos + (targetZone.greenWidth/2)}%`;
-    uiTargetYellowRight.style.width = `${targetZone.yellowWidth}%`;
+    if (uiTargetGreen) {
+        uiTargetGreen.style.left = `${targetZone.pos}%`;
+        uiTargetGreen.style.width = `${targetZone.greenWidth}%`;
+        uiTargetGreen.style.transform = 'translateX(-50%)';
+    }
+    if (uiTargetYellowLeft) {
+        uiTargetYellowLeft.style.left = `${targetZone.pos - (targetZone.greenWidth/2) - targetZone.yellowWidth}%`;
+        uiTargetYellowLeft.style.width = `${targetZone.yellowWidth}%`;
+    }
+    if (uiTargetYellowRight) {
+        uiTargetYellowRight.style.left = `${targetZone.pos + (targetZone.greenWidth/2)}%`;
+        uiTargetYellowRight.style.width = `${targetZone.yellowWidth}%`;
+    }
 
-    uiMessage.innerText = `ПРИЕМ! (${t.name})`;
-    uiMessage.style.color = "#fff";
+    if (uiMessage) {
+        uiMessage.innerText = `ПРИЕМ! (${t.name})`;
+        uiMessage.style.color = "#fff";
+    }
 }
 
 // --- ФАЗА 2: ЧЕКАНКА ---
 function startJuggling(isPerfect) {
     gameState = 'JUGGLING';
     jugglingCount = 0;
-    btnShoot.style.display = 'none'; 
-    uiTimingContainer.style.display = 'none';
-    uiJuggling.style.display = 'flex';
+    if (btnShoot) btnShoot.style.display = 'none'; 
+    if (uiTimingContainer) uiTimingContainer.style.display = 'none';
+    if (uiJuggling) uiJuggling.style.display = 'flex';
     
     if (isPerfect) {
         respect += 50;
-        uiRespectScore.innerText = respect;
-        uiMessage.innerText = "ИДЕАЛЬНЫЙ ПРИЕМ! +50\nНАЧЕКАНЬ МИНИМУМ 3 РАЗА!";
-        uiMessage.style.color = "#00ff00";
+        if (uiRespectScore) uiRespectScore.innerText = respect;
+        if (uiMessage) {
+            uiMessage.innerText = "ИДЕАЛЬНЫЙ ПРИЕМ! +50\nНАЧЕКАНЬ МИНИМУМ 3 РАЗА!";
+            uiMessage.style.color = "#00ff00";
+        }
     } else {
-        uiMessage.innerText = "ПРИНЯЛ. НАЧЕКАНЬ МИНИМУМ 3 РАЗА!";
-        uiMessage.style.color = "#FFC107";
+        if (uiMessage) {
+            uiMessage.innerText = "ПРИНЯЛ. НАЧЕКАНЬ МИНИМУМ 3 РАЗА!";
+            uiMessage.style.color = "#FFC107";
+        }
     }
 
     ball.size = 35; 
@@ -132,37 +143,41 @@ function hitBall(foot) {
     if ((foot === 'left' && isLeft) || (foot === 'right' && isRight)) {
         respect += 10;
         jugglingCount++;
-        uiRespectScore.innerText = respect;
+        if (uiRespectScore) uiRespectScore.innerText = respect;
         
         ball.vy = -11 - Math.random() * 3; 
         ball.vx = (Math.random() - 0.5) * 10; 
         
         if (jugglingCount >= 3) {
-            btnShoot.style.display = 'flex'; 
-            uiMessage.innerText = "МОЖНО БИТЬ ПО ВОРОТАМ ИЛИ НАБИВАТЬ ДАЛЬШЕ!";
+            if (btnShoot) btnShoot.style.display = 'flex'; 
+            if (uiMessage) uiMessage.innerText = "МОЖНО БИТЬ ПО ВОРОТАМ ИЛИ НАБИВАТЬ ДАЛЬШЕ!";
         } else {
-            uiMessage.innerText = `НАБИТО: ${jugglingCount}/3`;
+            if (uiMessage) uiMessage.innerText = `НАБИТО: ${jugglingCount}/3`;
         }
-        uiMessage.style.color = "#00ff00";
+        if (uiMessage) uiMessage.style.color = "#00ff00";
         if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     } else {
         loseLife("ПО НОГАМ СЕБЕ УДАРИЛ!");
     }
 }
 
-document.getElementById('btn-left').addEventListener('pointerdown', () => hitBall('left'));
-document.getElementById('btn-right').addEventListener('pointerdown', () => hitBall('right'));
+const btnLeftEl = document.getElementById('btn-left');
+const btnRightEl = document.getElementById('btn-right');
+if (btnLeftEl) btnLeftEl.addEventListener('pointerdown', () => hitBall('left'));
+if (btnRightEl) btnRightEl.addEventListener('pointerdown', () => hitBall('right'));
 
-btnShoot.addEventListener('pointerdown', () => {
-    if (gameState !== 'JUGGLING') return;
-    startAimingPhase();
-});
+if (btnShoot) {
+    btnShoot.addEventListener('pointerdown', () => {
+        if (gameState !== 'JUGGLING') return;
+        startAimingPhase();
+    });
+}
 
 // --- ФАЗА 3.1: ПРИЦЕЛИВАНИЕ ---
 function startAimingPhase() {
     gameState = 'AIMING';
-    uiJuggling.style.display = 'none';
-    btnConfirmAim.style.display = 'flex';
+    if (uiJuggling) uiJuggling.style.display = 'none';
+    if (btnConfirmAim) btnConfirmAim.style.display = 'flex';
     
     const goalWidth = Math.min(canvas.width * 0.7, 450);
     const goalHeight = 120;
@@ -173,22 +188,28 @@ function startAimingPhase() {
 
     ball.vy = 0; ball.ay = 0; ball.vx = 0;
 
-    uiMessage.innerText = "Куда ударишь?";
-    uiMessage.style.color = "#ffcc00";
+    if (uiMessage) {
+        uiMessage.innerText = "Куда ударишь?";
+        uiMessage.style.color = "#ffcc00";
+    }
 }
 
-btnConfirmAim.addEventListener('pointerdown', () => {
-    if (gameState !== 'AIMING') return;
-    btnConfirmAim.style.display = 'none';
-    shotMenu.style.display = 'block';
-    uiMessage.innerText = "ВЫБЕРИ ТИП УДАРА";
-    uiMessage.style.color = "#ffcc00";
-});
+if (btnConfirmAim) {
+    btnConfirmAim.addEventListener('pointerdown', () => {
+        if (gameState !== 'AIMING') return;
+        btnConfirmAim.style.display = 'none';
+        if (shotMenu) shotMenu.style.display = 'block';
+        if (uiMessage) {
+            uiMessage.innerText = "ВЫБЕРИ ТИП УДАРА";
+            uiMessage.style.color = "#ffcc00";
+        }
+    });
+}
 
 document.querySelectorAll('.shot-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         selectedShotType = e.target.getAttribute('data-type');
-        shotMenu.style.display = 'none';
+        if (shotMenu) shotMenu.style.display = 'none';
         startPowerPhase();
     });
 });
@@ -196,30 +217,34 @@ document.querySelectorAll('.shot-btn').forEach(btn => {
 // --- ФАЗА 3.2: ШКАЛА СИЛЫ ---
 function startPowerPhase() {
     gameState = 'POWER';
-    powerContainer.style.display = 'flex';
+    if (powerContainer) powerContainer.style.display = 'flex';
     powerCursorPos = 0;
     powerDirection = 1;
-    uiMessage.innerText = "ЖМИ ЭКРАН, ЧТОБЫ ОСТАНОВИТЬ СИЛУ!";
+    if (uiMessage) {
+        uiMessage.innerText = "ЖМИ ЭКРАН, ЧТОБЫ ОСТАНОВИТЬ СИЛУ!";
+        uiMessage.style.color = "#fff";
+    }
 }
 
 function confirmPower() {
     if (gameState !== 'POWER') return;
-    selectedPower = powerCursorPos; // Сохраняем выбранную силу (0-100)
-    powerContainer.style.display = 'none';
+    selectedPower = powerCursorPos; 
+    if (powerContainer) powerContainer.style.display = 'none';
     startShotAnimation();
 }
 
 // --- ФАЗА 3.3: АНИМАЦИЯ УДАРА ---
 function startShotAnimation() {
     gameState = 'SHOT_ANIMATION';
-    uiMessage.innerText = "УДАР!";
-    uiMessage.style.color = "#ffff00";
+    if (uiMessage) {
+        uiMessage.innerText = "УДАР!";
+        uiMessage.style.color = "#ffff00";
+    }
 
     animStartX = ball.x;
     animStartY = ball.y;
     animProgress = 0;
 
-    // Рассчитываем исход удара (точность 1-100)
     let accuracyRoll = Math.floor(Math.random() * 100) + 1;
 
     const goalWidth = Math.min(canvas.width * 0.7, 450);
@@ -228,22 +253,18 @@ function startShotAnimation() {
     const goalY = canvas.height * 0.1;
 
     if (accuracyRoll <= 10) {
-        // 1. Промах мимо мяча (мяч падает под ноги)
         shotOutcome = 'MISS_BALL';
         animEndX = ball.x + (Math.random() - 0.5) * 50;
         animEndY = groundLevel - 10;
     } else if (accuracyRoll <= 30) {
-        // 2. Промах мимо ворот (мяч улетает в сторону)
         shotOutcome = 'OFF_TARGET';
         animEndX = targetGoalX + (Math.random() > 0.5 ? 250 : -250);
-        animEndY = goalY - 80 - Math.random() * 50; // Выше ворот или вбок
+        animEndY = goalY - 80 - Math.random() * 50; 
     } else if (accuracyRoll <= 70) {
-        // 3. Вратарь потащил (в центр ворот)
         shotOutcome = 'SAVE';
         animEndX = goalX + goalWidth / 2;
         animEndY = goalY + goalHeight / 2;
     } else {
-        // 4. Гол! (точно в выбранную зону)
         shotOutcome = 'GOAL';
         animEndX = targetGoalX;
         animEndY = targetGoalY;
@@ -256,29 +277,29 @@ function finishShot() {
     let resultMsg = "";
     if (shotOutcome === 'GOAL') {
         resultMsg = "ГОЛ В ДЕВЯТКУ! ИДЕАЛЬНО!";
-        uiMessage.style.color = "#00ff00";
+        if (uiMessage) uiMessage.style.color = "#00ff00";
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     } else if (shotOutcome === 'SAVE') {
         resultMsg = "ВРАТАРЬ ПОТАЩИЛ МЯЧ!";
-        uiMessage.style.color = "#FFC107";
+        if (uiMessage) uiMessage.style.color = "#FFC107";
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
         loseLife("ВРАТАРЬ ВЗЯЛ УДАР!");
         return;
     } else if (shotOutcome === 'OFF_TARGET') {
         resultMsg = "МИМО ВОРОТ! УКАТИЛСЯ В КУСТЫ!";
-        uiMessage.style.color = "#ff3333";
+        if (uiMessage) uiMessage.style.color = "#ff3333";
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
         loseLife("НЕ ПОПАЛ В СТВОР ВОРОТ!");
         return;
     } else if (shotOutcome === 'MISS_BALL') {
         resultMsg = "ПРОМАХ ПО МЯЧУ! КОСЫЙ УДАР!";
-        uiMessage.style.color = "#ff3333";
+        if (uiMessage) uiMessage.style.color = "#ff3333";
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
         loseLife("МАЗИЛА, НЕ ПОПАЛ ПО МЯЧУ!");
         return;
     }
 
-    uiMessage.innerText = resultMsg;
+    if (uiMessage) uiMessage.innerText = resultMsg;
     setTimeout(startReception, 3000);
 }
 
@@ -287,16 +308,18 @@ function loseLife(msg) {
     let hearts = '';
     for(let i=0; i<lives; i++) hearts += '❤️';
     for(let i=0; i<(3-lives); i++) hearts += '🖤';
-    uiLivesCount.innerText = hearts;
+    if (uiLivesCount) uiLivesCount.innerText = hearts;
     
     gameState = 'RESULT';
-    uiTimingContainer.style.display = 'none';
-    uiJuggling.style.display = 'none';
-    btnConfirmAim.style.display = 'none';
-    shotMenu.style.display = 'none';
-    powerContainer.style.display = 'none';
-    uiMessage.innerText = `${msg}\nМИНУС ЖИЗНЬ!`;
-    uiMessage.style.color = "#ff3333";
+    if (uiTimingContainer) uiTimingContainer.style.display = 'none';
+    if (uiJuggling) uiJuggling.style.display = 'none';
+    if (btnConfirmAim) btnConfirmAim.style.display = 'none';
+    if (shotMenu) shotMenu.style.display = 'none';
+    if (powerContainer) powerContainer.style.display = 'none';
+    if (uiMessage) {
+        uiMessage.innerText = `${msg}\nМИНУС ЖИЗНЬ!`;
+        uiMessage.style.color = "#ff3333";
+    }
     
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
     setTimeout(startReception, 2000);
@@ -304,12 +327,14 @@ function loseLife(msg) {
 
 function gameOver() {
     gameState = 'GAMEOVER';
-    uiJuggling.style.display = 'none';
-    btnConfirmAim.style.display = 'none';
-    shotMenu.style.display = 'none';
-    powerContainer.style.display = 'none';
-    uiMessage.innerText = `ИГРА ОКОНЧЕНА!\nТвой респект: ${respect}\nКликни для рестарта.`;
-    uiMessage.style.color = "#ff3333";
+    if (uiJuggling) uiJuggling.style.display = 'none';
+    if (btnConfirmAim) btnConfirmAim.style.display = 'none';
+    if (shotMenu) shotMenu.style.display = 'none';
+    if (powerContainer) powerContainer.style.display = 'none';
+    if (uiMessage) {
+        uiMessage.innerText = `ИГРА ОКОНЧЕНА!\nТвой респект: ${respect}\nКликни для рестарта.`;
+        uiMessage.style.color = "#ff3333";
+    }
 }
 
 // --- ИГРОВОЙ ЦИКЛ ---
@@ -317,7 +342,6 @@ function gameLoop(currentTime) {
     const dt = (currentTime - lastFrameTime) / 1000;
     lastFrameTime = currentTime;
 
-    // Отрисовка двора
     ctx.fillStyle = '#4CAF50'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#607D8B'; ctx.fillRect(0, 0, canvas.width, canvas.height * 0.35);
     
@@ -336,11 +360,13 @@ function gameLoop(currentTime) {
         cursor.pos += cursor.speed * cursor.direction;
         if (cursor.pos >= 100) { cursor.pos = 100; cursor.direction = -1; } 
         else if (cursor.pos <= 0) { cursor.pos = 0; cursor.direction = 1; }
-        uiCursor.style.left = `${cursor.pos}%`;
+        if (uiCursor) uiCursor.style.left = `${cursor.pos}%`;
 
         timeLeft -= dt;
-        uiTimer.innerText = Math.max(0, timeLeft).toFixed(1) + "s";
-        uiTimer.style.color = timeLeft <= 3 ? "#ff3333" : "#ffcc00";
+        if (uiTimer) {
+            uiTimer.innerText = Math.max(0, timeLeft).toFixed(1) + "s";
+            uiTimer.style.color = timeLeft <= 3 ? "#ff3333" : "#ffcc00";
+        }
 
         if (timeLeft <= 0) loseLife("ВРЕМЯ ВЫШЛО!");
     }
@@ -377,16 +403,13 @@ function gameLoop(currentTime) {
         powerCursorPos += 2.5 * powerDirection;
         if (powerCursorPos >= 100) { powerCursorPos = 100; powerDirection = -1; }
         else if (powerCursorPos <= 0) { powerCursorPos = 0; powerDirection = 1; }
-        powerCursor.style.top = `${powerCursorPos}%`;
+        if (powerCursor) powerCursor.style.top = `${powerCursorPos}%`;
     }
 
-    // Анимация полета мяча со скоростью, зависящей от выбранной силы
     if (gameState === 'SHOT_ANIMATION') {
-        // Скорость зависит от силы (от 0.01 при слабом ударе до 0.08 при максимальном)
         let speedMultiplier = 0.01 + (selectedPower / 100) * 0.07;
         
         if (shotOutcome === 'MISS_BALL') {
-            // Если промахнулся мимо мяча - мяч просто падает вниз с гравитацией
             ball.y += 6;
             animProgress = 1;
             if (ball.y >= groundLevel) {
@@ -401,14 +424,12 @@ function gameLoop(currentTime) {
             ball.x = animStartX + (animEndX - animStartX) * animProgress;
             ball.y = animStartY + (animEndY - animStartY) * animProgress;
             
-            // Если это полет в ворота - уменьшаем спрайт в перспективе
             if (shotOutcome !== 'MISS_BALL') {
                 ball.size = 35 - (35 - 10) * animProgress;
             }
         }
     }
 
-    // Рендер мяча
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, ball.size, 0, Math.PI * 2);
     ctx.fillStyle = '#fff'; ctx.fill();
@@ -421,7 +442,7 @@ window.addEventListener('pointerdown', (e) => {
     if (e.target.tagName === 'BUTTON' || e.target.closest('#shot-menu') || e.target.closest('#power-container')) return; 
 
     if (gameState === 'GAMEOVER') {
-        lives = 3; respect = 0; uiRespectScore.innerText = respect;
+        lives = 3; respect = 0; if (uiRespectScore) uiRespectScore.innerText = respect;
         startReception();
         return;
     }
