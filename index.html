@@ -6,9 +6,7 @@
     <title>Козёл: Дворовая Легенда</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    
-    <!-- Версия 9 для жесткого сброса кэша -->
-    <link rel="stylesheet" href="style.css?v=9">
+    <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
     <div id="ui-layer" style="display: none;">
@@ -63,7 +61,6 @@
         </div>
     </div>
 
-    <!-- ГЛАВНОЕ МЕНЮ -->
     <div id="main-menu" class="fullscreen-overlay">
         <h1 class="game-title">КОЗЁЛ</h1>
         <p class="game-subtitle">Дворовая легенда</p>
@@ -73,7 +70,6 @@
         <button id="btn-menu-exit" class="menu-btn exit-btn">ВЫЙТИ</button>
     </div>
 
-    <!-- ЭКРАН КОНЦА ИГРЫ -->
     <div id="game-over-screen" class="fullscreen-overlay" style="display: none;">
         <h2 id="end-title" class="game-title">ИГРА ОКОНЧЕНА</h2>
         <p id="end-desc" class="game-subtitle">...</p>
@@ -81,7 +77,6 @@
         <button id="btn-end-home" class="menu-btn">УЙТИ ДОМОЙ</button>
     </div>
 
-    <!-- ОКНА ПРАВИЛ И РЕКОРДОВ -->
     <div id="modal-rules" class="modal" style="display: none;">
         <h3>ПРАВИЛА</h3>
         <p>1. Поймай мяч в зеленой/желтой зоне шкалы.<br><br>2. Начекань мяч левой (Л) и правой (П) ногой, чтобы не упал на красную черту.<br><br>3. Сделав минимум 3 набивки, нажми УДАР, выбери точку на воротах, тип удара и силу.<br><br>4. Забивай голы! Вратарь получает буквы К-О-З-Ё-Л. Собрал слово — ты победил!</p>
@@ -97,7 +92,6 @@
 
     <canvas id="gameCanvas"></canvas>
     
-    <!-- Версия 9 -->
-    <script src="game.js?v=9"></script>
+    <script src="game.js?v=10"></script>
 </body>
 </html>

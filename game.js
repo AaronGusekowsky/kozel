@@ -9,7 +9,7 @@ canvas.height = window.innerHeight;
 const groundLevel = canvas.height - 220; 
 const ceilingLevel = 90; 
 
-// ЗАГРУЗКА АССЕТОВ
+// Загрузка ассетов
 const images = {
     bg: new Image(),
     goals: new Image(),
@@ -56,9 +56,10 @@ let powerCursorPos = 0, powerDirection = 1, selectedPower = 50;
 let animStartX = 0, animStartY = 0, animEndX = 0, animEndY = 0, animProgress = 0;
 let shotOutcome = 'GOAL'; 
 
+// Размеры ворот и вратаря
+let gkWidth = 64;
+let gkHeight = 72;
 let gkX = 0;
-let gkWidth = 60;
-let gkHeight = 70;
 let gkAnimStartX = 0;
 let gkAnimEndX = 0;
 
@@ -67,12 +68,14 @@ const targetZone = { pos: 50, greenWidth: 8, yellowWidth: 16 };
 let timeLeft = 10.0;
 let lastFrameTime = performance.now();
 
+// Позиция ворот привязана к линии горизонта площадки (нижний край на 48% высоты экрана)
 function getGoalBounds() {
-    const goalWidth = Math.min(canvas.width * 0.75, 480);
-    const goalHeight = 160;
+    const goalWidth = Math.min(canvas.width * 0.75, 450);
+    const goalHeight = 140;
+    const goalBottomY = canvas.height * 0.48; 
     const goalX = (canvas.width - goalWidth) / 2;
-    const goalY = canvas.height * 0.12;
-    return { x: goalX, y: goalY, width: goalWidth, height: goalHeight };
+    const goalY = goalBottomY - goalHeight;
+    return { x: goalX, y: goalY, width: goalWidth, height: goalHeight, bottomY: goalBottomY };
 }
 
 function initMenu() {
@@ -142,13 +145,19 @@ function startReception() {
     gameState = 'RECEPTION';
     timeLeft = 10.0;
     
+    const gb = getGoalBounds();
+    // Мяч начинает полет от ворот в центре площадки
     ball.x = canvas.width * 0.5;
-    ball.y = canvas.height * 0.15;
-    ball.size = 15;
-    ball.vy = ((canvas.height * 0.7) - ball.y) / (10 * 60); 
-    ball.vx = (Math.random() - 0.5) * 2;
-    ball.sizeSpeed = (35 - 15) / (10 * 60); 
+    ball.y = gb.bottomY - 20;
+    ball.size = 12;
+    
+    // Летит строго вперед к игроку с легким колебанием
+    const targetY = canvas.height * 0.72;
+    ball.vy = (targetY - ball.y) / (10 * 60); 
+    ball.vx = 0;
+    ball.sizeSpeed = (35 - 12) / (10 * 60); 
     ball.ay = 0; 
+    
     cursor.pos = Math.random() * 100;
     cursor.speed = 1.2 + (3 - lives) * 0.3; 
     
@@ -180,10 +189,10 @@ function startJuggling(isPerfect) {
     uiMessage.style.color = isPerfect ? "#00ff00" : "#FFC107";
 
     ball.size = 35;
-    ball.y = canvas.height * 0.5;
+    ball.y = canvas.height * 0.52;
     ball.x = canvas.width / 2;
     ball.vy = -7;
-    ball.vx = (Math.random() - 0.5) * 6;
+    ball.vx = (Math.random() - 0.5) * 4;
     ball.ay = 0.35; 
 }
 
@@ -201,7 +210,7 @@ function hitBall(foot) {
         jugglingCount++;
         updateUI();
         
-        let xPush = 4 + Math.random() * 5; 
+        let xPush = 4 + Math.random() * 4; 
         ball.vx = (foot === 'left') ? xPush : -xPush; 
         ball.ay += 0.015; 
         ball.vy = -9 - Math.random() * 2; 
@@ -277,8 +286,8 @@ function startShotAnimation() {
             ball.ay = 0.5;
         } else {
             shotOutcome = 'OFF_TARGET';
-            animEndX = targetGoalX + (targetGoalX > gb.x + gb.width / 2 ? 150 : -150); 
-            animEndY = gb.y - 100;
+            animEndX = targetGoalX + (targetGoalX > gb.x + gb.width / 2 ? 140 : -140); 
+            animEndY = gb.y - 70;
         }
         gkAnimEndX = Math.max(gb.x, Math.min(gb.x + gb.width - gkWidth, targetGoalX - gkWidth / 2));
     } else {
@@ -296,10 +305,10 @@ function startShotAnimation() {
             shotOutcome = 'GOAL'; 
             animEndX = targetGoalX;
             animEndY = targetGoalY;
-            if (dist < 100) {
-                gkAnimEndX = gkX + (targetGoalX > gkCenter ? 40 : -40); 
+            if (dist < 80) {
+                gkAnimEndX = gkX + (targetGoalX > gkCenter ? 35 : -35); 
             } else {
-                gkAnimEndX = gkX + (Math.random() > 0.5 ? 60 : -60);
+                gkAnimEndX = gkX + (Math.random() > 0.5 ? 50 : -50);
             }
             gkAnimEndX = Math.max(gb.x, Math.min(gb.x + gb.width - gkWidth, gkAnimEndX));
         }
@@ -367,6 +376,7 @@ function gameLoop(currentTime) {
     const dt = (currentTime - lastFrameTime) / 1000;
     lastFrameTime = currentTime;
 
+    // 1. ФОН ДВОРА
     if (images.bg.complete && images.bg.naturalWidth !== 0) {
         ctx.drawImage(images.bg, 0, 0, canvas.width, canvas.height);
     } else {
@@ -375,6 +385,7 @@ function gameLoop(currentTime) {
 
     const gb = getGoalBounds();
 
+    // 2. ВРАТАРЬ (стоит и перемещается по линии основания ворот)
     if (gkX === 0) gkX = gb.x + (gb.width / 2) - (gkWidth / 2);
 
     if (gameState !== 'SHOT_ANIMATION' && gameState !== 'RESULT' && gameState !== 'GAMEOVER') {
@@ -386,12 +397,14 @@ function gameLoop(currentTime) {
         gkX = gkAnimStartX + (gkAnimEndX - gkAnimStartX) * Math.min(animProgress * 1.5, 1);
     }
 
+    const gkY = gb.bottomY - gkHeight; // Ноги вратаря стоят на земле
     if (images.gk.complete && images.gk.naturalWidth !== 0) {
-        ctx.drawImage(images.gk, gkX, gb.y + gb.height - gkHeight, gkWidth, gkHeight);
+        ctx.drawImage(images.gk, gkX, gkY, gkWidth, gkHeight);
     } else {
-        ctx.fillStyle = '#ff5722'; ctx.fillRect(gkX, gb.y + gb.height - gkHeight, gkWidth, gkHeight);
+        ctx.fillStyle = '#ff5722'; ctx.fillRect(gkX, gkY, gkWidth, gkHeight);
     }
 
+    // 3. ВОРОТА (стоят основанием на земле)
     if (images.goals.complete && images.goals.naturalWidth !== 0) {
         ctx.drawImage(images.goals, gb.x, gb.y, gb.width, gb.height);
     } else {
@@ -405,8 +418,9 @@ function gameLoop(currentTime) {
 
     if (gameState === 'RECEPTION') {
         ball.y += ball.vy;
-        ball.x += ball.vx;
+        ball.x = (canvas.width * 0.5) + Math.sin(ball.y * 0.05) * 15; // Легкая траектория без улета вбок
         ball.size += ball.sizeSpeed;
+        
         cursor.pos += cursor.speed * cursor.direction;
         if (cursor.pos >= 100) { cursor.pos = 100; cursor.direction = -1; } 
         else if (cursor.pos <= 0) { cursor.pos = 0; cursor.direction = 1; }
@@ -433,6 +447,7 @@ function gameLoop(currentTime) {
             if (ball.vy < 0) ball.vy *= -0.4; 
         }
 
+        // Ноги на переднем плане
         if (images.feet.complete && images.feet.naturalWidth !== 0) {
             ctx.drawImage(images.feet, canvas.width / 2 - 100, canvas.height - 240, 200, 220);
         }
@@ -477,6 +492,7 @@ function gameLoop(currentTime) {
         }
     }
 
+    // Отрисовка мяча
     if (images.ball.complete && images.ball.naturalWidth !== 0) {
         ctx.drawImage(images.ball, ball.x - ball.size, ball.y - ball.size, ball.size * 2, ball.size * 2);
     } else {
@@ -512,7 +528,7 @@ window.addEventListener('pointerdown', (e) => {
 
     if (gameState === 'AIMING') {
         const gb = getGoalBounds();
-        if (e.clientX >= gb.x && e.clientX <= gb.x + gb.width && e.clientY >= gb.y && e.clientY <= gb.y + gb.height) {
+        if (e.clientX >= gb.x && e.clientX <= gb.x + gb.width && e.clientY >= gb.y && e.clientY <= gb.bottomY) {
             targetGoalX = e.clientX;
             targetGoalY = e.clientY;
             gameState = 'SELECT_SHOT';
