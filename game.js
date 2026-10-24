@@ -50,16 +50,41 @@ Object.keys(assets).forEach(key => {
     assets[key].img.src = 'assets/' + key + '.png';
 });
 
-// Размеры вратаря (соразмерно новым воротам)
+// Пропорции вратаря
 const gkWidth = 70;
 const gkHeight = 82;
 let gkX = 0;
 let gkAnimStartX = 0;
 let gkAnimEndX = 0;
+let gkVelocityX = 0;
 
 let groundLevel = 0;
 const ceilingLevel = 90;
 let goalBounds = { x: 0, y: 0, width: 0, height: 0, bottomY: 0 };
+
+// ПЕРЕМЕННЫЕ ПРОЦЕДУРНОЙ АНИМАЦИИ
+let screenShake = 0;
+let particles = [];
+let footKickLeft = 0;
+let footKickRight = 0;
+
+function addScreenShake(amount) {
+    screenShake = Math.max(screenShake, amount);
+}
+
+function spawnDust(x, y, count = 6) {
+    for (let i = 0; i < count; i++) {
+        particles.push({
+            x: x + (Math.random() - 0.5) * 16,
+            y: y + (Math.random() - 0.5) * 6,
+            vx: (Math.random() - 0.5) * 4,
+            vy: -Math.random() * 2.5 - 0.5,
+            size: Math.random() > 0.5 ? 3 : 2,
+            alpha: 1.0,
+            life: 0.35 + Math.random() * 0.25
+        });
+    }
+}
 
 function updateScreenMetrics() {
     canvas.width = window.innerWidth;
@@ -68,7 +93,6 @@ function updateScreenMetrics() {
 
     groundLevel = canvas.height - 220;
 
-    // УМЕНЬШЕННЫЕ ВОРОТА: 55% ширины экрана (от 200px до 280px) и 105px в высоту
     const goalWidth = Math.max(200, Math.min(canvas.width * 0.55, 280));
     const goalHeight = 105;
     const goalBottomY = canvas.height * 0.48;
@@ -80,8 +104,19 @@ function updateScreenMetrics() {
         bottomY: goalBottomY
     };
 
-    // Центрируем вратаря при ресайзе
     gkX = goalBounds.x + (goalBounds.width - gkWidth) * 0.5;
+}
+
+function getGoalInnerBounds() {
+    const insetX = 16;
+    const insetTop = 14;
+    const insetBottom = 10;
+    return {
+        minX: goalBounds.x + insetX,
+        maxX: goalBounds.x + goalBounds.width - insetX,
+        minY: goalBounds.y + insetTop,
+        maxY: goalBounds.bottomY - insetBottom
+    };
 }
 
 window.addEventListener('resize', updateScreenMetrics);
@@ -95,7 +130,20 @@ let gameStartTime = 0;
 let gameState = 'MENU'; 
 let roundTimerId = null;
 
-let ball = { x: 0, y: 0, size: 20, vx: 0, vy: 0, sizeSpeed: 0, ay: 0 };
+// Мяч с поддержкой вращения и squash & stretch
+let ball = { 
+    x: 0, 
+    y: 0, 
+    size: 20, 
+    vx: 0, 
+    vy: 0, 
+    sizeSpeed: 0, 
+    ay: 0,
+    rotation: 0,
+    scaleX: 1,
+    scaleY: 1
+};
+
 let targetGoalX = 0, targetGoalY = 0;
 let selectedShotCost = 1;
 let powerCursorPos = 0, powerDirection = 1, selectedPower = 50; 
@@ -189,6 +237,9 @@ function startReception() {
     ball.x = canvas.width * 0.5;
     ball.y = goalBounds.bottomY - 20;
     ball.size = 10;
+    ball.rotation = 0;
+    ball.scaleX = 1;
+    ball.scaleY = 1;
     
     const targetY = canvas.height * 0.72;
     ball.vy = (targetY - ball.y) / 600;
@@ -214,7 +265,11 @@ function startJuggling(isPerfect) {
     btnShoot.style.display = 'none';
     uiTimingContainer.style.display = 'none';
     uiJuggling.style.display = 'flex';
-    if (isPerfect) { respect += 50; updateUI(); }
+    if (isPerfect) { 
+        respect += 50; 
+        updateUI(); 
+        addScreenShake(4);
+    }
     uiMessage.innerText = isPerfect ? "ИДЕАЛЬНЫЙ ПРИЕМ! +50\nНАЧЕКАНЬ МИНИМУМ 3 РАЗА!" : "НАЧЕКАНЬ МИНИМУМ 3 РАЗА!";
     uiMessage.style.color = isPerfect ? "#00ff00" : "#FFC107";
 
@@ -224,6 +279,8 @@ function startJuggling(isPerfect) {
     ball.vy = -7;
     ball.vx = (Math.random() - 0.5) * 4;
     ball.ay = 0.35; 
+    ball.scaleX = 0.85;
+    ball.scaleY = 1.2;
 }
 
 function hitBall(foot) {
@@ -243,6 +300,19 @@ function hitBall(foot) {
         ball.vx = (foot === 'left') ? xPush : -xPush; 
         ball.ay += 0.015; 
         ball.vy = -9 - Math.random() * 2; 
+
+        // Squash & stretch мяча при ударе
+        ball.scaleX = 1.3;
+        ball.scaleY = 0.7;
+
+        // Отдача ноги и пыль из-под кеда
+        if (foot === 'left') {
+            footKickLeft = 24;
+            spawnDust(canvas.width * 0.5 - 60, canvas.height - 40, 5);
+        } else {
+            footKickRight = 24;
+            spawnDust(canvas.width * 0.5 + 60, canvas.height - 40, 5);
+        }
         
         if (jugglingCount >= 3) {
             btnShoot.style.display = 'flex';
@@ -263,9 +333,11 @@ btnShoot.addEventListener('pointerdown', () => { if (gameState === 'JUGGLING') s
 
 function startAimingPhase() {
     gameState = 'AIMING';
+    targetGoalX = 0;
+    targetGoalY = 0;
     uiJuggling.style.display = 'none';
     ball.vy = 0; ball.ay = 0; ball.vx = 0;
-    uiMessage.innerText = "ТАПНИ ПО ВОРОТАМ, ЧТОБЫ ВЫБРАТЬ ТОЧКУ УДАРА!";
+    uiMessage.innerText = "ТАПНИ В СТВОР ВОРОТ ДЛЯ УДАРА!";
     uiMessage.style.color = "#ffcc00";
 }
 
@@ -301,6 +373,10 @@ function startShotAnimation() {
     animStartY = ball.y;
     animProgress = 0;
     
+    addScreenShake(6); // Сочный толчок экрана при ударе
+    ball.scaleX = 0.7;
+    ball.scaleY = 1.35;
+    
     gkAnimStartX = gkX; 
     let gkCenter = gkX + gkWidth * 0.5;
 
@@ -314,14 +390,12 @@ function startShotAnimation() {
             ball.ay = 0.5;
         } else {
             shotOutcome = 'OFF_TARGET';
-            // Промах соразмерно ширине новых ворот
-            animEndX = targetGoalX + (targetGoalX > goalBounds.x + goalBounds.width * 0.5 ? 90 : -90); 
-            animEndY = goalBounds.y - 50;
+            animEndX = targetGoalX + (targetGoalX > goalBounds.x + goalBounds.width * 0.5 ? 80 : -80); 
+            animEndY = goalBounds.y - 40;
         }
         gkAnimEndX = Math.max(goalBounds.x, Math.min(goalBounds.x + goalBounds.width - gkWidth, targetGoalX - gkWidth * 0.5));
     } else {
         let dist = Math.abs(targetGoalX - gkCenter);
-        // Скорректирована формула под уменьшенную ширину ворот
         let saveChance = 88 - (dist * 0.55) - (selectedPower * 0.2);
         saveChance = Math.max(30, Math.min(95, saveChance));
         
@@ -345,10 +419,12 @@ function finishShot() {
         uiMessage.style.color = "#00ff00";
         kozelLetters = Math.min(5, kozelLetters + selectedShotCost); 
         updateUI();
+        addScreenShake(10); // Взрывная тряска при голе
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         gameState = 'RESULT';
         roundTimerId = setTimeout(startReception, 2000);
     } else if (shotOutcome === 'SAVE') {
+        addScreenShake(5);
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
         loseLife("ВРАТАРЬ ПОТАЩИЛ МЯЧ!");
     } else if (shotOutcome === 'OFF_TARGET') {
@@ -370,6 +446,7 @@ function loseLife(msg) {
     powerContainer.style.display = 'none';
     uiMessage.innerText = msg + "\nМИНУС ЖИЗНЬ!";
     uiMessage.style.color = "#ff3333";
+    addScreenShake(8);
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
     clearRoundTimer();
     roundTimerId = setTimeout(startReception, 2000);
@@ -400,6 +477,28 @@ function gameLoop(currentTime) {
     const frameScale = dt * 60;
     lastFrameTime = currentTime;
 
+    // Затухание Screen Shake
+    let shakeOffsetX = 0;
+    let shakeOffsetY = 0;
+    if (screenShake > 0) {
+        shakeOffsetX = (Math.random() - 0.5) * screenShake * 2;
+        shakeOffsetY = (Math.random() - 0.5) * screenShake * 2;
+        screenShake = Math.max(0, screenShake - dt * 25);
+    }
+
+    // Затухание толчков ног
+    footKickLeft = Math.max(0, footKickLeft - dt * 100);
+    footKickRight = Math.max(0, footKickRight - dt * 100);
+
+    // Плавный возврат масштаба мяча (squash & stretch recovery)
+    ball.scaleX += (1 - ball.scaleX) * 0.15 * frameScale;
+    ball.scaleY += (1 - ball.scaleY) * 0.15 * frameScale;
+
+    ctx.save();
+    if (shakeOffsetX !== 0 || shakeOffsetY !== 0) {
+        ctx.translate(shakeOffsetX, shakeOffsetY);
+    }
+
     // 1. Фон двора
     if (assets.bg.ready) {
         ctx.drawImage(assets.bg.img, 0, 0, canvas.width, canvas.height);
@@ -408,24 +507,7 @@ function gameLoop(currentTime) {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // 2. Вратарь (ходит строго в пределах новых уменьшенных ворот)
-    if (gameState !== 'SHOT_ANIMATION' && gameState !== 'RESULT' && gameState !== 'GAMEOVER') {
-        let center = goalBounds.x + (goalBounds.width - gkWidth) * 0.5; 
-        let range = Math.max(10, (goalBounds.width - gkWidth) * 0.5 - 6);
-        gkX = center + Math.sin(currentTime * 0.0025) * range; 
-    } else if (gameState === 'SHOT_ANIMATION') {
-        gkX = gkAnimStartX + (gkAnimEndX - gkAnimStartX) * Math.min(animProgress * 1.5, 1);
-    }
-
-    const gkY = goalBounds.bottomY - gkHeight;
-    if (assets.gk.ready) {
-        ctx.drawImage(assets.gk.img, gkX, gkY, gkWidth, gkHeight);
-    } else {
-        ctx.fillStyle = '#ff5722';
-        ctx.fillRect(gkX, gkY, gkWidth, gkHeight);
-    }
-
-    // 3. Ворота (рисуются по уменьшенным координатам goalBounds)
+    // 2. ВОРОТА
     if (assets.goals.ready) {
         ctx.drawImage(assets.goals.img, goalBounds.x, goalBounds.y, goalBounds.width, goalBounds.height);
     } else {
@@ -434,7 +516,97 @@ function gameLoop(currentTime) {
         ctx.strokeRect(goalBounds.x, goalBounds.y, goalBounds.width, goalBounds.height);
     }
 
+    // 3. ВРАТАРЬ С ПРОЦЕДУРНОЙ ПОХОДКОЙ И НАКЛОНОМ
+    let prevGkX = gkX;
+    if (gameState !== 'SHOT_ANIMATION' && gameState !== 'RESULT' && gameState !== 'GAMEOVER') {
+        let center = goalBounds.x + (goalBounds.width - gkWidth) * 0.5; 
+        let range = Math.max(10, (goalBounds.width - gkWidth) * 0.5 - 6);
+        gkX = center + Math.sin(currentTime * 0.0025) * range; 
+    } else if (gameState === 'SHOT_ANIMATION') {
+        gkX = gkAnimStartX + (gkAnimEndX - gkAnimStartX) * Math.min(animProgress * 1.5, 1);
+    }
+    gkVelocityX = gkX - prevGkX;
+
+    // Пружинящее покачивание шага (bobbing) и наклон корпуса (tilt)
+    let gkBob = Math.abs(Math.sin(currentTime * 0.012)) * 4;
+    let gkTilt = Math.max(-0.12, Math.min(0.12, gkVelocityX * 0.05));
+    let gkBaseY = goalBounds.bottomY - gkHeight + gkBob;
+
+    ctx.save();
+    ctx.translate(gkX + gkWidth * 0.5, gkBaseY + gkHeight);
+    ctx.rotate(gkTilt);
+    if (gameState === 'SHOT_ANIMATION') {
+        // Вытягивание в прыжке за мячом
+        ctx.scale(0.9, 1.15);
+    }
+    if (assets.gk.ready) {
+        ctx.drawImage(assets.gk.img, -gkWidth * 0.5, -gkHeight, gkWidth, gkHeight);
+    } else {
+        ctx.fillStyle = '#ff5722';
+        ctx.fillRect(-gkWidth * 0.5, -gkHeight, gkWidth, gkHeight);
+    }
+    ctx.restore();
+
+    // Индикатор зоны в фазе прицеливания
+    if (gameState === 'AIMING') {
+        const inner = getGoalInnerBounds();
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 204, 0, 0.75)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(inner.minX, inner.minY, inner.maxX - inner.minX, inner.maxY - inner.minY);
+        ctx.restore();
+    }
+
+    // 4. ДИНАМИЧЕСКАЯ ТЕНЬ МЯЧА НА АСФАЛЬТЕ
+    let shadowY = groundLevel;
+    let shadowX = ball.x;
+    let shadowScale = 1.0;
+    let shadowAlpha = 0.4;
+
+    if (gameState === 'JUGGLING') {
+        let distToGround = Math.max(0, groundLevel - ball.y);
+        shadowScale = Math.max(0.3, 1 - distToGround / 350);
+        shadowAlpha = Math.max(0.1, 0.45 * shadowScale);
+    } else if (gameState === 'RECEPTION') {
+        shadowY = ball.y + ball.size * 1.2;
+        shadowScale = ball.size / 35;
+        shadowAlpha = 0.35;
+    } else if (gameState === 'SHOT_ANIMATION') {
+        shadowY = goalBounds.bottomY;
+        shadowX = ball.x;
+        shadowScale = ball.size / 35;
+        shadowAlpha = 0.25;
+    }
+
+    if (gameState !== 'MENU' && gameState !== 'GAMEOVER') {
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 0, 0, ' + shadowAlpha + ')';
+        ctx.beginPath();
+        ctx.ellipse(shadowX, shadowY, ball.size * shadowScale * 1.1, ball.size * shadowScale * 0.35, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // 5. ЧАСТИЦЫ ПЫЛИ
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx * frameScale;
+        p.y += p.vy * frameScale;
+        p.vy += 0.08 * frameScale; // легкая гравитация
+        p.alpha -= (1 / p.life) * dt;
+
+        if (p.alpha <= 0) {
+            particles.splice(i, 1);
+            continue;
+        }
+
+        ctx.fillStyle = 'rgba(180, 175, 160, ' + p.alpha + ')';
+        ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
+    }
+
     if (gameState === 'MENU' || gameState === 'GAMEOVER') {
+        ctx.restore();
         requestAnimationFrame(gameLoop);
         return;
     }
@@ -443,6 +615,7 @@ function gameLoop(currentTime) {
         ball.y += ball.vy * frameScale;
         ball.x = (canvas.width * 0.5) + Math.sin(ball.y * 0.05) * 15;
         ball.size += ball.sizeSpeed * frameScale;
+        ball.rotation += 0.02 * frameScale;
         
         cursor.pos += cursor.speed * cursor.direction * frameScale;
         if (cursor.pos >= 100) { cursor.pos = 100; cursor.direction = -1; } 
@@ -459,17 +632,37 @@ function gameLoop(currentTime) {
         ball.vy += ball.ay * frameScale;
         ball.x += ball.vx * frameScale;
         ball.y += ball.vy * frameScale;
+        ball.rotation += ball.vx * 0.04 * frameScale;
 
-        if (ball.x < ball.size) { ball.x = ball.size; ball.vx *= -0.8; }
-        if (ball.x > canvas.width - ball.size) { ball.x = canvas.width - ball.size; ball.vx *= -0.8; }
+        if (ball.x < ball.size) { 
+            ball.x = ball.size; 
+            ball.vx *= -0.8; 
+            ball.scaleX = 0.8; ball.scaleY = 1.25;
+        }
+        if (ball.x > canvas.width - ball.size) { 
+            ball.x = canvas.width - ball.size; 
+            ball.vx *= -0.8; 
+            ball.scaleX = 0.8; ball.scaleY = 1.25;
+        }
 
         if (ball.y - ball.size < ceilingLevel) {
             ball.y = ceilingLevel + ball.size;
             if (ball.vy < 0) ball.vy *= -0.4; 
         }
 
+        // 6. НОГИ С ПРОЦЕДУРНЫМ ТОЛЧКОМ
         if (assets.feet.ready) {
-            ctx.drawImage(assets.feet.img, canvas.width * 0.5 - 100, canvas.height - 240, 200, 220);
+            let feetBaseY = canvas.height - 240;
+            let leftY = feetBaseY - footKickLeft;
+            let rightY = feetBaseY - footKickRight;
+            let avgFeetY = (leftY + rightY) * 0.5;
+            let feetTilt = (footKickLeft - footKickRight) * 0.005;
+
+            ctx.save();
+            ctx.translate(canvas.width * 0.5, avgFeetY + 110);
+            ctx.rotate(feetTilt);
+            ctx.drawImage(assets.feet.img, -100, -110, 200, 220);
+            ctx.restore();
         }
 
         ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
@@ -478,7 +671,7 @@ function gameLoop(currentTime) {
     }
 
     if (gameState === 'SELECT_SHOT' || gameState === 'POWER') {
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
         ctx.beginPath();
         ctx.arc(targetGoalX, targetGoalY, 12, 0, Math.PI * 2);
         ctx.fill();
@@ -502,6 +695,8 @@ function gameLoop(currentTime) {
 
     if (gameState === 'SHOT_ANIMATION') {
         let speedMultiplier = (0.015 + (selectedPower / 100) * 0.065) * frameScale;
+        ball.rotation += 0.25 * frameScale;
+
         if (shotOutcome === 'MISS_BALL') {
             ball.vy += ball.ay * frameScale;
             ball.y += ball.vy * frameScale;
@@ -514,24 +709,31 @@ function gameLoop(currentTime) {
             }
             ball.x = animStartX + (animEndX - animStartX) * animProgress;
             ball.y = animStartY + (animEndY - animStartY) * animProgress;
-            ball.size = 35 - 25 * animProgress; // В конце полета мяч чуть меньше (10px) под размер новых ворот
+            ball.size = 35 - 25 * animProgress;
         }
     }
 
-    // 4. Отрисовка мяча
+    // 7. ОТРИСОВКА МЯЧА С ВРАЩЕНИЕМ И SQUASH & STRETCH
+    ctx.save();
+    ctx.translate(ball.x, ball.y);
+    ctx.rotate(ball.rotation);
+    ctx.scale(ball.scaleX, ball.scaleY);
+
     if (assets.ball.ready) {
         const d = ball.size * 2;
-        ctx.drawImage(assets.ball.img, ball.x - ball.size, ball.y - ball.size, d, d);
+        ctx.drawImage(assets.ball.img, -ball.size, -ball.size, d, d);
     } else {
         ctx.beginPath();
-        ctx.arc(ball.x, ball.y, ball.size, 0, Math.PI * 2);
+        ctx.arc(0, 0, ball.size, 0, Math.PI * 2);
         ctx.fillStyle = '#fff';
         ctx.fill();
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 2;
         ctx.stroke();
     }
+    ctx.restore();
 
+    ctx.restore(); // Сброс смещения screen shake
     requestAnimationFrame(gameLoop);
 }
 
@@ -557,16 +759,24 @@ window.addEventListener('pointerdown', (e) => {
     }
 
     if (gameState === 'AIMING') {
-        // Зона выбора точки удара автоматически берется из уменьшенного goalBounds
-        if (e.clientX >= goalBounds.x && e.clientX <= goalBounds.x + goalBounds.width &&
-            e.clientY >= goalBounds.y && e.clientY <= goalBounds.bottomY) {
-            targetGoalX = e.clientX;
-            targetGoalY = e.clientY;
+        const rect = canvas.getBoundingClientRect();
+        const clickX = (e.clientX - rect.left) * (canvas.width / rect.width);
+        const clickY = (e.clientY - rect.top) * (canvas.height / rect.height);
+        const inner = getGoalInnerBounds();
+
+        if (clickX >= inner.minX && clickX <= inner.maxX &&
+            clickY >= inner.minY && clickY <= inner.maxY) {
+            targetGoalX = Math.round(clickX);
+            targetGoalY = Math.round(clickY);
             gameState = 'SELECT_SHOT';
             shotMenu.style.display = 'block';
             uiMessage.innerText = "ВЫБЕРИ ТИП УДАРА";
             uiMessage.style.color = "#ffcc00";
             if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+        } else {
+            uiMessage.innerText = "ТАПАЙ ТОЧНО В СТВОР ВОРОТ!";
+            uiMessage.style.color = "#ff3333";
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
         }
         return;
     }
